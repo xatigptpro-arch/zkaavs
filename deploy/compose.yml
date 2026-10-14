@@ -93,6 +93,7 @@ services:
     cpus: 0.5
     volumes:
       - /etc/zkaavs/portal-password.json:/run/secrets/portal-password:ro
+      - /etc/zkaavs/portal-data:/data:rw
     networks:
       private:
         ipv4_address: 172.30.240.5

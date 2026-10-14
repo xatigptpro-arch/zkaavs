@@ -28,6 +28,10 @@ Comprobaciones ejecutadas sobre la configuración activa:
 - El portal local rechazó un envío sin sesión (HTTP 401) y permitió iniciar
   sesión con la contraseña correcta. Una invitación de prueba autorizada mostró
   confirmación en Canva.
+- El registro persistente del portal contiene solo invitaciones hechas desde
+  ZKAAVS y vive en `/etc/zkaavs/portal-data` con UID 10002 y modo 0700/0600.
+  Se verificó la lectura del estado en Canva y que la casilla de autorización
+  ya no forma parte del formulario.
 - El prototipo alojado en Sites quedó sin secreto ni dominio propio; el portal
   operativo está en el miniPC y se publica por el túnel exclusivo de ZKAAVS.
 
@@ -46,6 +50,12 @@ autenticación. El portal exige contraseña y sesión segura. El navegador autom
 mantiene una sesión administrativa de Canva: quien obtenga su perfil o acceso
 al VNC podría operar con esa cuenta. El perfil se guarda fuera del repositorio,
 con permisos restringidos en el miniPC.
+
+El portal consulta los registros guardados cada 15 minutos y trata de cancelar
+una invitación o quitar el usuario al vencer el plazo elegido. Canva no expone
+la fecha exacta de aceptación en la vista automatizada; el contador de días
+activos empieza en la primera comprobación que detecta al miembro. La ruta de
+revocación automática aún no se ha ejecutado contra una cuenta real.
 
 Las reglas dependen de los bridges `br-zkaavs-api`, `br-zkaavs-out` y
 `br-zkaavs-canva`, además de los

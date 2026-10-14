@@ -3,22 +3,43 @@
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Invitaciones · ZKAAVS</title><link rel="stylesheet" href="/style.css"><script src="/panel.js" defer></script></head>
 <body>
   <header><a class="brand" href="https://zkaavs.app">ZKAAVS</a><form method="post" action="/logout"><button class="text-button" type="submit">Cerrar sesión</button></form></header>
-  <main class="shell">
-    <p class="eyebrow">Equipo educativo</p>
+  <main class="shell dashboard">
+    <p class="eyebrow">Canva Educación</p>
     <h1>Invitaciones</h1>
-    <p class="lead">Envía una invitación a una persona autorizada de tu institución.</p>
-    <section class="card">
-      <div class="card-heading"><div><p class="eyebrow">Nueva invitación</p><h2>Invitar por correo</h2></div><span class="state">Panel privado</span></div>
-      <p>Canva enviará una invitación con el rol <strong>Estudiante</strong>. La persona debe aceptarla para unirse.</p>
+    <p class="lead">Gestiona las personas invitadas desde ZKAAVS.</p>
+    <section class="stats" aria-label="Resumen">
+      <div class="stat"><span>Invitaciones enviadas</span><strong id="sent-count">—</strong></div>
+      <div class="stat"><span>Usuarios activos</span><strong id="user-count">—</strong></div>
+      <div class="stat"><span>Invitaciones pendientes</span><strong id="pending-count">—</strong></div>
+    </section>
+    <section class="card" aria-labelledby="new-invite-heading">
+      <div class="card-heading"><div><p class="eyebrow">Nueva invitación</p><h2 id="new-invite-heading">Invitar por correo</h2></div><span class="state">Rol Estudiante</span></div>
       <form id="invite-form">
         <label for="email">Correo de la persona</label>
-        <input id="email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="nombre@institucion.edu" required>
-        <label class="check-row"><input id="confirmed" type="checkbox" required><span>Confirmo que pertenece a la institución educativa y está autorizada a unirse.</span></label>
+        <input id="email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="nombre@ejemplo.com" required>
+        <label for="duration">Duración de los beneficios</label>
+        <select id="duration" name="durationDays" required>
+          <option value="1">1 día</option><option value="7">7 días</option>
+          <option value="30" selected>30 días</option><option value="90">90 días</option>
+          <option value="180">180 días</option><option value="365">365 días</option>
+        </select>
+        <p class="hint">El plazo empieza al enviar la invitación. Al vencer, el panel intentará cancelar la invitación pendiente o retirar el acceso en Canva.</p>
         <button id="submit" type="submit">Enviar invitación</button>
         <p id="feedback" role="status" aria-live="polite"></p>
       </form>
     </section>
-    <p class="footnote">Solo para estudiantes de la institución educativa.</p>
+    <section class="card list-card" aria-labelledby="users-heading">
+      <div class="card-heading"><div><p class="eyebrow">Con acceso</p><h2 id="users-heading">Usuarios</h2></div><button class="secondary-button" id="refresh" type="button">Actualizar estados</button></div>
+      <p class="hint">Solo se muestran usuarios invitados desde ZKAAVS. Los días activos se cuentan desde la primera vez que el panel detectó el acceso en Canva.</p>
+      <p id="sync-status" role="status" aria-live="polite"></p>
+      <div class="table-wrap"><table><thead><tr><th>Correo</th><th>Días activos</th><th>Vence</th><th>Acción</th></tr></thead><tbody id="users-body"></tbody></table></div>
+      <p id="users-empty" class="empty" hidden>Aún no hay usuarios activos de ZKAAVS.</p>
+    </section>
+    <section class="card list-card" aria-labelledby="history-heading">
+      <div class="card-heading"><div><p class="eyebrow">Registro</p><h2 id="history-heading">Invitaciones enviadas</h2></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Correo</th><th>Enviada</th><th>Plazo</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="invitations-body"></tbody></table></div>
+      <p id="invitations-empty" class="empty" hidden>Aún no hay invitaciones registradas.</p>
+    </section>
   </main>
 </body>
 </html>

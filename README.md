@@ -7,9 +7,9 @@ API en https://api.zkaavs.app, servida por un túnel exclusivo de Cloudflare.
 
 - `frontend/`: lobby sin consultas a la API ni información de infraestructura.
 - `backend/`: API Express; Node 24 LTS.
-- `deploy/compose.yml`: API y túnel en contenedores separados.
+- `deploy/compose.yml`: API, túnel, navegador y panel en contenedores aislados.
 - `automation/`: navegador aislado para invitaciones de Canva Educación.
-- `portal/`: panel privado de invitaciones, alojado en el miniPC.
+- `portal/`: panel privado de invitaciones, alojado en el servidor.
 - `deploy/isolate-network.sh`: reglas de red exclusivas de ZKAAVS.
 - `deploy/zkaavs-stack.service`: arranque automático del conjunto.
 
@@ -32,15 +32,18 @@ El navegador de Canva corre en un tercer contenedor con perfil persistente
 exclusivo en `/etc/zkaavs/canva-profile`. Su VNC solo escucha en la IP de
 Tailscale del miniPC, puerto 5902. Su salida de red se limita a HTTPS público;
 no puede iniciar conexiones hacia la API, el túnel, el host, la LAN ni los
-demás proyectos. La API sí puede llamarlo para enviar una invitación. Chrome
+demás proyectos. El portal llama al navegador para gestionar invitaciones. Chrome
 se ejecuta con `--no-sandbox` dentro del contenedor; la separación respecto al
 host depende del aislamiento de Docker y de las reglas de firewall.
 
 El portal corre en un cuarto contenedor sin puertos publicados. La única ruta
 pública es `canva.zkaavs.app` a través del túnel. Exige una contraseña larga
 guardada solo como hash en `/etc/zkaavs/portal-password.json`, limita los
-intentos de acceso y usa una cookie de sesión segura de cuatro horas. También
-exige origen correcto y una confirmación explícita antes de invitar. Puede
+intentos de acceso y usa una cookie de sesión segura de cuatro horas. El
+historial se guarda en `/etc/zkaavs/portal-data/state.json`, fuera del
+repositorio. El panel consulta Canva cada 15 minutos, inicia el plazo elegido
+al enviar la invitación y trata de retirar el acceso al vencer. Los días
+activos se cuentan desde la primera detección del usuario en Canva. Puede
 contactar al controlador del navegador, pero no a la API ni a otros proyectos.
 
 El túnel solo recibe su propia credencial de `/etc/zkaavs/tunnel.json`, montada
@@ -64,6 +67,12 @@ sudo journalctl -u zkaavs-stack -n 50
 docker compose -f deploy/compose.yml ps
 docker compose -f deploy/compose.yml logs --tail 50
 curl https://api.zkaavs.app/health
+```
+
+El directorio de datos debe pertenecer al UID 10002 y tener permisos privados:
+
+```bash
+sudo install -d -o 10002 -g 10002 -m 0700 /etc/zkaavs/portal-data
 ```
 
 Para actualizar el backend:

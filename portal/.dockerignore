@@ -2,5 +2,6 @@
 !Dockerfile
 !package.json
 !server.js
+!store.js
 !public/
 !public/**

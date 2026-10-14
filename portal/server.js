@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { addInvitation, dashboard, latestRecords, updateRecord, updateSync } from './store.js';
 
 const hostname = 'canva.zkaavs.app';
 const origin = `https://${hostname}`;
@@ -19,6 +20,73 @@ const panelScript = readFileSync(new URL('./public/panel.js', import.meta.url));
 const sessions = new Map();
 const failures = new Map();
 const invitationTimes = [];
+let syncPromise = null;
+
+async function browserRequest(route, payload, timeout = 30_000) {
+  const response = await fetch(`http://canva-browser:3500${route}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(timeout)
+  });
+  const result = await response.json();
+  return { status: response.status, result };
+}
+
+function startSync() {
+  if (syncPromise) return syncPromise;
+  syncPromise = (async () => {
+    const current = latestRecords().filter(record =>
+      record.status !== 'revoked' && record.status !== 'expired');
+    if (!current.length) {
+      updateSync({ lastCheckedAt: new Date().toISOString(), syncError: null });
+      return;
+    }
+    const { status, result } = await browserRequest('/members', {
+      emails: current.map(record => record.email)
+    }, 70_000);
+    if (status !== 200 || !Array.isArray(result.members)) {
+      throw new Error(result.message ?? 'Canva no respondió a la comprobación.');
+    }
+    const observed = new Map(result.members.map(member => [member.email, member.status]));
+    const checkedAt = new Date().toISOString();
+    for (const record of current) {
+      const memberStatus = observed.get(record.email);
+      if (!['active', 'pending', 'absent'].includes(memberStatus)) continue;
+      const changes = { lastCheckedAt: checkedAt, revokeError: null };
+      if (memberStatus === 'active') {
+        changes.status = 'active';
+        if (!record.activeSince) changes.activeSince = checkedAt;
+      } else if (memberStatus === 'pending') {
+        changes.status = 'pending';
+      } else {
+        changes.status = record.expiresAt && Date.parse(record.expiresAt) <= Date.now()
+          ? 'expired' : 'absent';
+      }
+      updateRecord(record, changes);
+      if (record.expiresAt && Date.parse(record.expiresAt) <= Date.now()
+          && (memberStatus === 'active' || memberStatus === 'pending')) {
+        try {
+          const revoked = await browserRequest('/revoke', { email: record.email }, 45_000);
+          if (revoked.status !== 200 || revoked.result.revoked !== true) {
+            throw new Error(revoked.result.message ?? 'No se pudo revocar.');
+          }
+          updateRecord(record, {
+            status: 'expired', revokedAt: new Date().toISOString(), revokeError: null
+          });
+        } catch (error) {
+          console.error('Automatic revocation failed:', error.message);
+          updateRecord(record, { revokeError: 'No se pudo retirar el acceso. Se intentará de nuevo.' });
+        }
+      }
+    }
+    updateSync({ lastCheckedAt: checkedAt, syncError: null });
+  })().catch(error => {
+    console.error('Canva status sync failed:', error.message);
+    updateSync({ syncError: 'No se pudieron actualizar los estados de Canva.' });
+  }).finally(() => { syncPromise = null; });
+  return syncPromise;
+}
 
 function headers(response, type = 'text/html; charset=utf-8') {
   response.setHeader('Content-Type', type);
@@ -104,6 +172,12 @@ const server = createServer(async (request, response) => {
       if (!session(request)) return redirect(response, '/login');
       return send(response, 200, panelHtml);
     }
+    if (request.url === '/api/dashboard' && request.method === 'GET') {
+      if (!session(request)) return json(response, 401, 'Inicia sesión de nuevo.');
+      headers(response, 'application/json; charset=utf-8');
+      response.writeHead(200);
+      return response.end(JSON.stringify(dashboard(Boolean(syncPromise))));
+    }
     if (request.url === '/login' && request.method === 'POST') {
       if (!sameOrigin(request)) return send(response, 403, 'Forbidden');
       if (!request.headers['content-type']?.startsWith('application/x-www-form-urlencoded')) {
@@ -140,8 +214,16 @@ const server = createServer(async (request, response) => {
       }
       const data = JSON.parse(await body(request));
       const email = typeof data.email === 'string' ? data.email.trim().toLowerCase() : '';
-      if (email.length > 254 || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email) || data.confirmed !== true) {
-        return json(response, 400, 'Comprueba el correo y la autorización de la persona.');
+      const durationDays = data.durationDays;
+      if (email.length > 254 || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email)) {
+        return json(response, 400, 'Comprueba el correo electrónico.');
+      }
+      if (!Number.isInteger(durationDays) || durationDays < 1 || durationDays > 365) {
+        return json(response, 400, 'Elige una duración de 1 a 365 días.');
+      }
+      const existing = latestRecords().find(record => record.email === email);
+      if (existing && ['active', 'pending'].includes(existing.status)) {
+        return json(response, 409, 'Esta persona ya figura entre las invitaciones de ZKAAVS.');
       }
       while (invitationTimes.length && Date.now() - invitationTimes[0] > 60 * 60_000) {
         invitationTimes.shift();
@@ -149,16 +231,51 @@ const server = createServer(async (request, response) => {
       if (invitationTimes.length >= 30) return json(response, 429, 'Límite de 30 invitaciones por hora.');
       invitationTimes.push(Date.now());
       try {
-        const upstream = await fetch('http://canva-browser:3500/invite', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ email }),
-          signal: AbortSignal.timeout(30_000)
-        });
-        const result = await upstream.json();
-        return json(response, upstream.status, result.message ?? 'Canva no pudo confirmar la invitación.');
+        const upstream = await browserRequest('/invite', { email });
+        if (upstream.status !== 200) {
+          return json(response, upstream.status, upstream.result.message ?? 'Canva no pudo confirmar la invitación.');
+        }
+        try {
+          addInvitation(email, durationDays);
+        } catch (error) {
+          console.error('Invitation history write failed:', error.message);
+          return json(response, 424, 'Canva confirmó la invitación, pero no se pudo guardar el historial.');
+        }
+        return json(response, 200, 'Canva confirmó el envío de la invitación.');
       } catch {
         return json(response, 424, 'El navegador de Canva no está disponible.');
+      }
+    }
+    if (request.url === '/api/sync' && request.method === 'POST') {
+      if (!session(request)) return json(response, 401, 'Inicia sesión de nuevo.');
+      if (!sameOrigin(request)) return json(response, 403, 'Solicitud no autorizada.');
+      startSync();
+      return json(response, 202, 'Actualizando estados.');
+    }
+    if (request.url === '/api/revoke' && request.method === 'POST') {
+      if (!session(request)) return json(response, 401, 'Inicia sesión de nuevo.');
+      if (!sameOrigin(request)) return json(response, 403, 'Solicitud no autorizada.');
+      if (!request.headers['content-type']?.startsWith('application/json')) {
+        return json(response, 415, 'Formato inválido.');
+      }
+      const data = JSON.parse(await body(request));
+      const record = latestRecords().find(item => item.id === data.id);
+      if (!record || !['active', 'pending'].includes(record.status)) {
+        return json(response, 404, 'Esta invitación no está activa.');
+      }
+      if (syncPromise) return json(response, 409, 'Espera a que termine la actualización.');
+      try {
+        const revoked = await browserRequest('/revoke', { email: record.email }, 45_000);
+        if (revoked.status !== 200 || revoked.result.revoked !== true) {
+          return json(response, 424, revoked.result.message ?? 'Canva no confirmó la revocación.');
+        }
+        updateRecord(record, {
+          status: 'revoked', revokedAt: new Date().toISOString(), revokeError: null
+        });
+        return json(response, 200, 'Canva confirmó la revocación.');
+      } catch (error) {
+        console.error('Manual revocation failed:', error.message);
+        return json(response, 424, 'No se pudo confirmar la revocación en Canva.');
       }
     }
     return send(response, 404, 'Not Found');
@@ -168,5 +285,7 @@ const server = createServer(async (request, response) => {
   }
 });
 
-server.requestTimeout = 35_000;
+server.requestTimeout = 90_000;
 server.listen(port, '0.0.0.0', () => console.log(`Portal listening on ${port}`));
+setTimeout(startSync, 30_000).unref();
+setInterval(startSync, 15 * 60_000).unref();
