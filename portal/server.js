@@ -24,7 +24,7 @@ function headers(response, type = 'text/html; charset=utf-8') {
   response.setHeader('Content-Type', type);
   response.setHeader('Cache-Control', 'no-store');
   response.setHeader('X-Content-Type-Options', 'nosniff');
-  response.setHeader('Referrer-Policy', 'no-referrer');
+  response.setHeader('Referrer-Policy', 'same-origin');
   response.setHeader('X-Frame-Options', 'DENY');
   response.setHeader('Strict-Transport-Security', 'max-age=31536000');
   response.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
