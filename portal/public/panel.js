@@ -17,6 +17,11 @@ form.addEventListener('submit', async event => {
         confirmed: document.querySelector('#confirmed').checked
       })
     });
+    if (!response.headers.get('content-type')?.includes('application/json')) {
+      feedback.textContent = 'Respuesta inesperada. Revisa en Canva si se envió antes de volver a intentar.';
+      feedback.className = 'error';
+      return;
+    }
     const result = await response.json();
     if (response.status === 401) {
       location.assign('/login');

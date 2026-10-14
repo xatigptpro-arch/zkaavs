@@ -158,7 +158,7 @@ const server = createServer(async (request, response) => {
         const result = await upstream.json();
         return json(response, upstream.status, result.message ?? 'Canva no pudo confirmar la invitación.');
       } catch {
-        return json(response, 503, 'El navegador de Canva no está disponible.');
+        return json(response, 424, 'El navegador de Canva no está disponible.');
       }
     }
     return send(response, 404, 'Not Found');

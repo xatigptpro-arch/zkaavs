@@ -56,7 +56,7 @@ app.post('/invite', async (request, response) => {
   if (!emailPattern.test(email) || email.length > 254) {
     return response.status(400).json({ message: 'Correo inválido.' });
   }
-  if (!ready) return response.status(503).json({ message: 'La sesión de Canva no está disponible.' });
+  if (!ready) return response.status(424).json({ message: 'La sesión de Canva no está disponible.' });
   if (inviting) return response.status(409).json({ message: 'Hay otra invitación en curso.' });
   if (lastInvitation?.email === email && Date.now() - lastInvitation.at < 60_000) {
     return response.status(409).json({ message: 'Ya se solicitó esta invitación hace menos de un minuto.' });
@@ -68,7 +68,7 @@ app.post('/invite', async (request, response) => {
     if (!canvaPage) throw new Error('Canva tab is missing');
     const blocked = await canvaPage.title();
     if (blocked === 'Just a moment...') {
-      return response.status(503).json({ message: 'Canva está solicitando una verificación manual.' });
+      return response.status(424).json({ message: 'Canva está solicitando una verificación manual.' });
     }
     let dialog = canvaPage.getByRole('dialog').filter({
       hasText: 'Invita personas a tu equipo escolar'
@@ -80,7 +80,8 @@ app.post('/invite', async (request, response) => {
     const input = dialog.getByRole('textbox', {
       name: 'Escribir el correo electrónico de la persona 1'
     });
-    if (!await dialog.getByRole('button', { name: 'Estudiante', exact: true }).first().isVisible()) {
+    const role = dialog.getByRole('combobox', { name: 'Asignarle un rol a la persona 1' });
+    if (await role.count() !== 1 || (await role.innerText()).trim() !== 'Estudiante') {
       throw new Error('Student role is not selected');
     }
     await input.fill(email);
@@ -100,7 +101,7 @@ app.post('/invite', async (request, response) => {
     return response.json({ message: 'Canva confirmó el envío de la invitación.' });
   } catch (error) {
     console.error('Canva invitation failed:', error.message);
-    return response.status(502).json({ message: 'No pude confirmar el envío en Canva. Revísalo allí antes de volver a intentar.' });
+    return response.status(424).json({ message: 'No pude confirmar el envío en Canva. Revísalo allí antes de volver a intentar.' });
   } finally {
     inviting = false;
   }
