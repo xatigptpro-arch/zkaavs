@@ -46,13 +46,16 @@ del kernel/runtime o acceso administrativo puede superar esta separación.
 Una VM o máquina dedicada ofrece una frontera más fuerte.
 
 La API pública conserva solo los endpoints de estado. CORS no es un sistema de
-autenticación. El portal exige contraseña y sesión segura. El navegador automatizado
+autenticación. El portal exige usuario, contraseña individual y sesión segura. El navegador automatizado
 mantiene una sesión administrativa de Canva: quien obtenga su perfil o acceso
 al VNC podría operar con esa cuenta. El perfil se guarda fuera del repositorio,
 con permisos restringidos en el miniPC.
 
-El portal consulta los registros guardados cada 15 minutos y trata de cancelar
-una invitación o quitar el usuario al vencer el plazo elegido. Canva no expone
+El portal consulta los registros guardados cada 15 minutos y cancela las
+invitaciones pendientes al vencer. Si el miembro ya aceptó y Canva exige borrar
+sus diseños para retirarlo, marca la revocación pendiente de confirmación manual.
+Las cuentas vencidas solo tienen acceso de consulta; su vencimiento no elimina
+automáticamente a sus clientes de Canva. Canva no expone
 la fecha exacta de aceptación en la vista automatizada; el contador de días
 activos empieza en la primera comprobación que detecta al miembro. La ruta de
 revocación automática aún no se ha ejecutado contra una cuenta real.
@@ -62,3 +65,34 @@ Las reglas dependen de los bridges `br-zkaavs-api`, `br-zkaavs-out` y
 rangos actuales de conexión de Cloudflare. Los cambios del firewall o de Docker
 requieren verificar nuevamente la separación. DNS del túnel usa el resolver de
 Docker; no se implementó un filtro por nombre de dominio para sus consultas DNS.
+
+
+## Cuentas y planes — 2026-10-14
+
+El estado v2 conserva cuentas con contraseñas scrypt, planes y propietarios de
+cada invitación. Al migrar desde v1 se crea `admin` con la contraseña anterior,
+se le asignan los registros históricos y se guarda `state.json.v1.backup` con
+modo 0600. Los archivos de datos y credenciales nunca se versionan.
+
+La API filtra historial y miembros por la cuenta autenticada y comprueba la
+propiedad antes de revocar. Solo `admin` crea cuentas, renueva planes, suspende
+accesos y restablece contraseñas. Suspender o cambiar una contraseña invalida
+las sesiones anteriores. Cada cuenta puede cambiar su propia contraseña.
+
+El mes es el aniversario mensual del plan en UTC (los días 29–31 se ajustan al
+último día de meses cortos). Cada envío confirmado consume un cupo. Cancelarlo
+no devuelve saldo. Renovar un plan activo extiende la vigencia sin reiniciar
+el consumo; renovar uno vencido inicia un nuevo período. No hay cobros ni
+renovaciones de pago automáticas.
+
+Las reservas de cupo se guardan antes de solicitar el envío. Los envíos sin
+confirmación y los interrumpidos por un reinicio conservan una reserva, que
+solo administración resuelve después de consultar en Canva. La reserva evita
+sobrepasar el cupo ante reintentos. Un identificador de solicitud evita repetir
+un envío confirmado. Se serializan las operaciones sobre el navegador; un
+segundo envío simultáneo recibe 409 y no consume saldo.
+
+Las pruebas aisladas (`npm test` con Node 24) cubren migración, aislamiento entre
+cuentas, intentos de usar identificadores ajenos, cupos, renovaciones, vencimiento,
+reinicios, reintentos y suspensión/restablecimiento de sesiones. Las pruebas de
+interfaz usan respuestas simuladas y no envían invitaciones reales.

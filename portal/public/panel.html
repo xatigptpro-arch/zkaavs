@@ -4,12 +4,22 @@
 <body>
   <header class="site-header">
     <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">C</span><span>Canva Pro</span></a>
-    <form method="post" action="/logout"><button class="text-button" type="submit">Cerrar sesión</button></form>
+    <div class="header-account"><span id="account-label"></span><form method="post" action="/logout"><button class="text-button" type="submit">Cerrar sesión</button></form></div>
   </header>
   <main class="shell dashboard">
     <p class="eyebrow">Canva Pro</p>
     <h1>Invitaciones</h1>
     <p class="lead">Gestiona las invitaciones y el acceso al plan.</p>
+    <nav class="panel-tabs" aria-label="Secciones"><a href="#new-invite-heading">Invitaciones</a><a href="#admin-section" id="admin-link" hidden>Administración</a><a href="#password-section">Mi cuenta</a></nav>
+    <section class="card plan-card" aria-labelledby="plan-title">
+      <div class="card-heading"><div><p class="eyebrow">Mi cuenta</p><h2 id="plan-title">Tu plan</h2></div><span class="state" id="plan-status">Cargando…</span></div>
+      <div id="plan-details" hidden>
+        <div class="plan-metrics"><div><span>Enviadas este mes</span><strong id="quota-used">—</strong></div><div><span>Invitaciones disponibles</span><strong id="quota-remaining">—</strong></div><div><span>Próximo período</span><strong id="quota-reset">—</strong></div><div><span>Vencimiento del plan</span><strong id="plan-expiry">—</strong></div></div>
+        <progress id="quota-progress" value="0" max="1" aria-label="Cupo mensual consumido"></progress>
+        <p class="hint" id="quota-note"></p>
+      </div>
+      <p id="plan-message" class="hint"></p>
+    </section>
     <section class="stats" aria-label="Resumen">
       <div class="stat"><span>Invitaciones enviadas</span><strong id="sent-count">—</strong></div>
       <div class="stat"><span>Usuarios activos</span><strong id="user-count">—</strong></div>
@@ -32,8 +42,8 @@
           <input id="custom-duration" type="number" min="1" max="3650" step="1" value="30" inputmode="numeric">
           <p class="hint">Elige entre 1 y 3650 días.</p>
         </div>
-        <p class="hint">El plazo empieza al enviar la invitación. Al vencer, el panel intentará cancelar la invitación pendiente o retirar el acceso en Canva.</p>
-        <button id="submit" type="submit">Enviar invitación</button>
+        <p class="hint">El plazo empieza al enviar la invitación. Las invitaciones pendientes se cancelan al vencer. Los accesos aceptados requieren confirmación manual si Canva exige borrar diseños.</p>
+        <button id="submit" type="submit" disabled>Enviar invitación</button>
         <p id="feedback" role="status" aria-live="polite"></p>
       </form>
     </section>
@@ -41,13 +51,51 @@
       <div class="card-heading"><div><p class="eyebrow">Con acceso</p><h2 id="users-heading">Usuarios</h2></div><button class="secondary-button" id="refresh" type="button">Actualizar estados</button></div>
       <p class="hint">Aquí solo aparecen las personas invitadas desde este panel. Los días activos se cuentan desde la primera vez que se detectó su acceso en Canva.</p>
       <p id="sync-status" role="status" aria-live="polite"></p>
-      <div class="table-wrap"><table><thead><tr><th>Correo</th><th>Días activos</th><th>Vence</th><th>Acción</th></tr></thead><tbody id="users-body"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>Correo</th><th class="admin-only" hidden>Cuenta</th><th>Días activos</th><th>Vence</th><th>Acción</th></tr></thead><tbody id="users-body"></tbody></table></div>
       <p id="users-empty" class="empty" hidden>Aún no hay usuarios activos.</p>
     </section>
     <section class="card list-card" aria-labelledby="history-heading">
       <div class="card-heading"><div><p class="eyebrow">Registro</p><h2 id="history-heading">Invitaciones enviadas</h2></div></div>
-      <div class="table-wrap"><table><thead><tr><th>Correo</th><th>Enviada</th><th>Plazo</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="invitations-body"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>Correo</th><th class="admin-only" hidden>Cuenta</th><th>Enviada</th><th>Plazo</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="invitations-body"></tbody></table></div>
       <p id="invitations-empty" class="empty" hidden>Aún no hay invitaciones registradas.</p>
+    </section>
+    <section class="card list-card" id="operations-section" hidden aria-labelledby="operations-title">
+      <div class="card-heading"><div><p class="eyebrow">Seguimiento</p><h2 id="operations-title">Envíos por comprobar</h2></div></div>
+      <p class="hint">Estos envíos reservan un cupo hasta que administración compruebe el resultado en Canva.</p>
+      <div class="table-wrap"><table><thead><tr><th>Correo</th><th>Fecha</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="operations-body"></tbody></table></div>
+    </section>
+    <section class="card" id="admin-section" hidden aria-labelledby="admin-title">
+      <div class="card-heading"><div><p class="eyebrow">Administración</p><h2 id="admin-title">Cuentas y planes</h2></div></div>
+      <p class="hint">Cada cuenta ve solo sus clientes. El cupo se reinicia en el aniversario mensual de su plan; cancelar o revocar no devuelve saldo. Las renovaciones se gestionan aquí.</p>
+      <div class="table-wrap"><table><thead><tr><th>Cuenta</th><th>Plan</th><th>Enviadas / cupo</th><th>Vence</th></tr></thead><tbody id="accounts-body"></tbody></table></div>
+      <p id="accounts-empty" class="empty" hidden>Aún no hay cuentas creadas.</p>
+      <div class="admin-grid">
+        <div><h3>Crear cuenta</h3><form id="create-account-form">
+          <label for="new-account-name">Nombre</label><input id="new-account-name" type="text" maxlength="80" required>
+          <label for="new-account-username">Usuario</label><input id="new-account-username" type="text" minlength="3" maxlength="64" pattern="[a-z0-9][a-z0-9._\-]{2,63}" autocomplete="off" required>
+          <label for="new-account-password">Contraseña inicial</label><input id="new-account-password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required>
+          <div class="form-columns"><div><label for="new-account-quota">Invitaciones / mes</label><input id="new-account-quota" type="number" min="1" max="10000" value="10" required></div><div><label for="new-account-months">Meses de plan</label><input id="new-account-months" type="number" min="1" max="36" value="1" required></div></div>
+          <button type="submit">Crear cuenta</button>
+        </form></div>
+        <div><h3>Gestionar cuenta</h3><form id="manage-account-form">
+          <label for="account-choice">Cuenta</label><select id="account-choice" required><option value="">Selecciona una cuenta</option></select>
+          <div class="form-columns"><div><label for="renew-account-quota">Invitaciones / mes</label><input id="renew-account-quota" type="number" min="1" max="10000" value="10" required></div><div><label for="renew-account-months">Meses adicionales</label><input id="renew-account-months" type="number" min="1" max="36" value="1" required></div></div>
+          <p class="hint">Renovar un plan activo conserva su saldo y extiende el vencimiento. Un plan vencido inicia un nuevo período. Renovar no reactiva una cuenta suspendida.</p>
+          <div class="button-row"><button type="submit">Renovar plan</button><button id="toggle-account" class="danger-button" type="button">Suspender cuenta</button></div>
+          <label for="reset-account-password">Nueva contraseña</label><input id="reset-account-password" type="password" minlength="12" maxlength="128" autocomplete="new-password">
+          <button id="reset-account" class="secondary-button" type="button">Restablecer contraseña</button>
+        </form></div>
+      </div>
+      <p id="admin-feedback" role="status" aria-live="polite"></p>
+    </section>
+    <section class="card" id="password-section" aria-labelledby="password-title">
+      <div class="card-heading"><div><p class="eyebrow">Mi cuenta</p><h2 id="password-title">Cambiar contraseña</h2></div></div>
+      <form id="password-form">
+        <label for="current-password">Contraseña actual</label><input id="current-password" type="password" autocomplete="current-password" maxlength="256" required>
+        <label for="new-password">Nueva contraseña</label><input id="new-password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+        <button type="submit">Guardar contraseña</button>
+        <p id="password-feedback" role="status" aria-live="polite"></p>
+      </form>
     </section>
   </main>
 </body>

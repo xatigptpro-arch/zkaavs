@@ -37,12 +37,13 @@ se ejecuta con `--no-sandbox` dentro del contenedor; la separación respecto al
 host depende del aislamiento de Docker y de las reglas de firewall.
 
 El portal corre en un cuarto contenedor sin puertos publicados. La única ruta
-pública es `canva.zkaavs.app` a través del túnel. Exige una contraseña larga
-guardada solo como hash en `/etc/zkaavs/portal-password.json`, limita los
-intentos de acceso y usa una cookie de sesión segura de cuatro horas. El
-historial se guarda en `/etc/zkaavs/portal-data/state.json`, fuera del
-repositorio. El panel consulta Canva cada 15 minutos, inicia el plazo elegido
-al enviar la invitación y trata de retirar el acceso al vencer. Los días
+pública es `canva.zkaavs.app` a través del túnel. Exige credenciales individuales,
+limita los intentos de acceso y usa una cookie segura de cuatro horas. El hash
+de la contraseña inicial del administrador vive en
+`/etc/zkaavs/portal-password.json`. Las cuentas, hashes individuales e historial
+se guardan en `/etc/zkaavs/portal-data/state.json`, fuera del repositorio. El panel consulta Canva cada 15 minutos, inicia el plazo elegido
+al enviar la invitación y cancela invitaciones pendientes al vencer. La retirada
+de miembros aceptados requiere confirmación manual si Canva exige borrar diseños. Los días
 activos se cuentan desde la primera detección del usuario en Canva. Puede
 contactar al controlador del navegador, pero no a la API ni a otros proyectos.
 
@@ -131,3 +132,27 @@ La política CSP del lobby permite únicamente su CSS local; no carga scripts,
 recursos externos ni realiza conexiones a la API.
 
 Ver `deploy/SECURITY.md` para el alcance y resultados de la revisión actual.
+
+
+### Cuentas individuales del portal
+
+El acceso ahora requiere usuario y contraseña. La cuenta inicial es `admin` y
+conserva la contraseña anterior. Desde **Administración** se crean cuentas con
+un cupo de invitaciones por mes y una vigencia en meses. También se pueden
+renovar, suspender, habilitar y restablecer contraseñas. Cada cuenta ve y gestiona
+únicamente sus invitaciones; el administrador ve todas y su propietario.
+
+Los cupos se renuevan en el aniversario mensual de activación del plan, en UTC.
+Las invitaciones confirmadas consumen cupo aunque se cancelen después. Los saldos
+no se acumulan y renovar antes del vencimiento no reinicia el mes vigente. Un
+plan vencido permite consultar el historial, pero bloquea invitaciones y
+revocaciones hasta la renovación. El plazo de cada cliente es independiente.
+
+Un envío cuyo resultado sea incierto reserva un cupo hasta que el administrador
+lo compruebe en **Envíos por comprobar**. Este paso consulta Canva para confirmar
+el envío o liberar la reserva; no vuelve a invitar al correo.
+
+El estado existente se migra automáticamente a v2 y se guarda una copia previa
+`state.json.v1.backup` en el directorio privado de datos.
+Pruebas: `npm test --prefix portal`, con Node 24.
+No se ha conectado ningún proveedor de pagos.
