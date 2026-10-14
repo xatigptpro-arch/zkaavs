@@ -139,13 +139,13 @@ form.addEventListener('submit', async event => {
     feedback.className = 'success';
     form.reset();
     updateCustomDuration();
-    await loadDashboard();
   } catch (error) {
     feedback.textContent = error.message || 'No se pudo conectar. Revisa en Canva antes de volver a intentar.';
     feedback.className = 'error';
   } finally {
-    inviteBusy = false;
+    submit.textContent = 'Actualizando…';
     await loadDashboard();
+    inviteBusy = false;
     submit.disabled = dashboard?.me.usage.allowed === false || dashboard?.me.usage.remaining === 0;
     submit.textContent = 'Enviar invitación';
   }
