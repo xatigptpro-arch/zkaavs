@@ -136,8 +136,9 @@ Ver `deploy/SECURITY.md` para el alcance y resultados de la revisión actual.
 
 ### Cuentas individuales del portal
 
-El acceso ahora requiere usuario y contraseña. La cuenta inicial es `admin` y
-conserva la contraseña anterior. Desde **Administración** se crean cuentas con
+Las cuentas nuevas acceden con correo electrónico y contraseña. La cuenta
+inicial conserva temporalmente `admin` y la contraseña anterior; desde **Mi
+cuenta** puede asociar su correo, que reemplaza ese identificador de acceso. Desde **Administración** se crean cuentas con
 un cupo de invitaciones por mes y una vigencia en meses. También se pueden
 renovar, suspender, habilitar y restablecer contraseñas. Cada cuenta ve y gestiona
 únicamente sus invitaciones; el administrador ve todas y su propietario.
@@ -156,3 +157,10 @@ El estado existente se migra automáticamente a v2 y se guarda una copia previa
 `state.json.v1.backup` en el directorio privado de datos.
 Pruebas: `npm test --prefix portal`, con Node 24.
 No se ha conectado ningún proveedor de pagos.
+
+
+Los correos de acceso son únicos y se normalizan sin distinguir mayúsculas.
+Cada cuenta puede actualizar su correo confirmando la contraseña actual; el
+administrador también puede corregir el correo de otras cuentas. Los cambios
+conservan el historial y el cupo, pero cierran las demás sesiones. No se envían
+códigos OTP ni correos de registro: las credenciales se entregan manualmente.

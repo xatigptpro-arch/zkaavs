@@ -46,7 +46,7 @@ del kernel/runtime o acceso administrativo puede superar esta separación.
 Una VM o máquina dedicada ofrece una frontera más fuerte.
 
 La API pública conserva solo los endpoints de estado. CORS no es un sistema de
-autenticación. El portal exige usuario, contraseña individual y sesión segura. El navegador automatizado
+autenticación. El portal exige correo, contraseña individual y sesión segura. El navegador automatizado
 mantiene una sesión administrativa de Canva: quien obtenga su perfil o acceso
 al VNC podría operar con esa cuenta. El perfil se guarda fuera del repositorio,
 con permisos restringidos en el miniPC.
@@ -96,3 +96,11 @@ Las pruebas aisladas (`npm test` con Node 24) cubren migración, aislamiento ent
 cuentas, intentos de usar identificadores ajenos, cupos, renovaciones, vencimiento,
 reinicios, reintentos y suspensión/restablecimiento de sesiones. Las pruebas de
 interfaz usan respuestas simuladas y no envían invitaciones reales.
+
+
+Las cuentas nuevas se identifican por un correo único y normalizado. Las cuentas
+anteriores conservan su identificador solo hasta asociar un correo. El cambio
+de correo propio exige la contraseña actual y no cambia el ID propietario de
+los registros. Un administrador puede corregir el correo de otras cuentas.
+Cambiar el correo invalida las demás sesiones; la sesión propia que confirma el
+cambio se conserva. No hay envío de OTP ni dependencias de correo externas.

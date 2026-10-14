@@ -5,6 +5,14 @@ export class StoreError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
 
+export function normalizeEmail(value) {
+  const email = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (email.length > 254 || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email)) {
+    throw new StoreError(400, 'Introduce un correo electrónico válido.');
+  }
+  return email;
+}
+
 export function addMonths(value, months) {
   const date = new Date(value);
   const day = date.getUTCDate();
@@ -46,6 +54,15 @@ export function createStore(path, legacyCredential, clock = Date.now) {
       || !Array.isArray(state.operations) || !state.accounts.some(a => a.role === 'admin')) {
     throw new Error('Invalid portal state');
   }
+  let emailMigration = false;
+  for (const user of state.accounts) {
+    if (user.email === undefined) {
+      user.email = user.username?.includes('@') ? normalizeEmail(user.username) : null;
+      emailMigration = true;
+    }
+  }
+  if (emailMigration) persist();
+
   // A restarted process cannot know whether an interrupted send reached Canva.
   let interrupted = false;
   for (const operation of state.operations) {
@@ -82,13 +99,24 @@ export function createStore(path, legacyCredential, clock = Date.now) {
       start, end, expiresAt: plan.expiresAt };
   }
   function publicAccount(user) {
-    return { id: user.id, username: user.username, name: user.name, role: user.role, enabled: user.enabled,
+    return { id: user.id, email: user.email, username: user.email ? undefined : user.username, name: user.name, role: user.role, enabled: user.enabled,
       createdAt: user.createdAt, plan: user.plan, usage: usage(user) };
   }
-  function createAccount({ username, name, credential, monthlyQuota, months }) {
-    if (accounts().some(a => a.username === username)) throw new StoreError(409, 'Ese nombre de usuario ya existe.');
+  function assertEmailAvailable(email, exceptId) {
+    if (accounts().some(a => a.id !== exceptId && (a.email === email || (!a.email && a.username === email)))) {
+      throw new StoreError(409, 'Ese correo ya está asociado a una cuenta.');
+    }
+  }
+  function setEmail(user, value) {
+    const email = normalizeEmail(value);
+    assertEmailAvailable(email, user.id);
+    return updateAccount(user, { email, credentialVersion: user.credentialVersion + 1 });
+  }
+  function createAccount({ email: value, name, credential, monthlyQuota, months }) {
+    const email = normalizeEmail(value);
+    assertEmailAvailable(email);
     const startedAt = new Date(clock()).toISOString();
-    const user = { id: randomUUID(), username, name, role: 'operator', enabled: true, credential,
+    const user = { id: randomUUID(), email, name, role: 'operator', enabled: true, credential,
       credentialVersion: 1, createdAt: startedAt,
       plan: { startedAt, expiresAt: addMonths(startedAt, months), months, monthlyQuota } };
     state.accounts.push(user); persist(); return publicAccount(user);
@@ -138,20 +166,21 @@ export function createStore(path, legacyCredential, clock = Date.now) {
   function dashboard(user, syncing = false) {
     const visible = r => user.role === 'admin' || r.ownerId === user.id;
     const latest = latestRecords().filter(visible);
-    const decorate = r => user.role === 'admin' ? { ...r, owner: account(r.ownerId)?.username ?? '—' } : r;
+    const ownerLabel = id => account(id)?.email || account(id)?.username || '—';
+    const decorate = r => user.role === 'admin' ? { ...r, owner: ownerLabel(r.ownerId) } : r;
     return {
       me: publicAccount(user), invitations: state.records.toReversed().filter(visible).map(decorate),
       users: latest.filter(r => r.status === 'active').map(decorate),
       operations: state.operations.filter(o => visible(o) && ['sending', 'uncertain'].includes(o.status))
         .map(o => ({ id: o.id, email: o.email, createdAt: o.createdAt, status: o.status,
-          ...(user.role === 'admin' ? { owner: account(o.ownerId)?.username ?? '—' } : {}) })),
+          ...(user.role === 'admin' ? { owner: ownerLabel(o.ownerId) } : {}) })),
       summary: { sent: state.records.filter(visible).length, users: latest.filter(r => r.status === 'active').length,
         pending: latest.filter(r => r.status === 'pending').length },
       ...(user.role === 'admin' ? { accounts: accounts().filter(a => a.role !== 'admin').map(publicAccount) } : {}),
       lastCheckedAt: state.lastCheckedAt, syncError: state.syncError, syncing
     };
   }
-  return { account, accounts, publicAccount, usage, latestRecords, createAccount, renew, updateAccount, reserve, finish,
+  return { account, accounts, publicAccount, usage, latestRecords, createAccount, setEmail, renew, updateAccount, reserve, finish,
     operations: () => state.operations, dashboard,
     updateRecord(record, changes) { Object.assign(record, changes); persist(); },
     updateSync(changes) { Object.assign(state, changes); persist(); } };

@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
-import { createStore, StoreError } from './store.js';
+import { createStore, normalizeEmail, StoreError } from './store.js';
 import { hashPassword, verifyPassword } from './auth.js';
 
 const hostname = process.env.PORTAL_HOSTNAME ?? 'canva.zkaavs.app';
@@ -144,19 +144,19 @@ const server = createServer(async (request, response) => {
       if (request.headers.origin !== origin) return send(response, 403, 'Forbidden');
       if (!request.headers['content-type']?.startsWith('application/x-www-form-urlencoded')) return send(response, 415, 'Unsupported Media Type');
       const params = new URLSearchParams(await body(request));
-      const username = (params.get('username') ?? '').trim().toLowerCase();
+      const identifier = (params.get('email') ?? params.get('username') ?? '').trim().toLowerCase();
       const password = params.get('password') ?? '';
       const ip = request.headers['cf-connecting-ip'] || request.socket.remoteAddress || 'unknown';
-      const keys = [`ip:${ip}`, `user:${username}`];
-      if (username.length > 64 || password.length > 256) return loginPage(response, 401, 'Usuario o contraseña incorrectos.');
+      const keys = [`ip:${ip}`, `user:${identifier}`];
+      if (identifier.length > 254 || password.length > 256) return loginPage(response, 401, 'Correo o contraseña incorrectos.');
       for (const key of keys) {
         const recent = (failures.get(key) ?? []).filter(at => Date.now() - at < 15 * 60_000);
         if (recent.length >= 10) return loginPage(response, 429, 'Demasiados intentos. Intenta en 15 minutos.');
         recent.push(Date.now()); failures.set(key, recent);
       }
-      const candidate = store.accounts().find(a => a.username === username);
+      const candidate = store.accounts().find(a => a.email === identifier || (!a.email && a.username === identifier));
       const valid = await verifyPassword(password, candidate?.credential ?? credential);
-      if (!candidate?.enabled || !valid) return loginPage(response, 401, 'Usuario o contraseña incorrectos.');
+      if (!candidate?.enabled || !valid) return loginPage(response, 401, 'Correo o contraseña incorrectos.');
       for (const key of keys) failures.delete(key);
       const token = randomBytes(32).toString('base64url');
       const existing = [...sessions.entries()].filter(([, s]) => s.userId === candidate.id);
@@ -178,6 +178,16 @@ const server = createServer(async (request, response) => {
       }
     }
     if (request.url === '/api/dashboard' && request.method === 'GET') return dataResponse(response, store.dashboard(user, Boolean(syncPromise)));
+    if (request.url === '/api/email' && request.method === 'POST') {
+      const data = JSON.parse(await body(request));
+      const email = normalizeEmail(data.email);
+      if (typeof data.currentPassword !== 'string' || data.currentPassword.length > 256
+          || !await verifyPassword(data.currentPassword, user.credential)) return json(response, 403, 'La contraseña actual es incorrecta.');
+      store.setEmail(user, email);
+      const current = sessions.get(tokenFrom(request));
+      if (current) current.version = user.credentialVersion;
+      return json(response, 200, 'Correo de acceso actualizado. Las demás sesiones se cerraron.');
+    }
     if (request.url === '/api/password' && request.method === 'POST') {
       const data = JSON.parse(await body(request)); validPassword(data.password);
       if (typeof data.currentPassword !== 'string' || data.currentPassword.length > 256
@@ -191,11 +201,11 @@ const server = createServer(async (request, response) => {
       if (user.role !== 'admin') return json(response, 403, 'Acceso exclusivo de administración.');
       if (request.url === '/api/admin/accounts' && request.method === 'POST') {
         const data = JSON.parse(await body(request)); validPlan(data); validPassword(data.password);
-        const username = typeof data.username === 'string' ? data.username.trim().toLowerCase() : '';
+        const email = normalizeEmail(data.email);
         const name = typeof data.name === 'string' ? data.name.trim() : '';
-        if (!/^[a-z0-9][a-z0-9._-]{2,63}$/.test(username) || name.length < 1 || name.length > 80) return json(response, 400, 'Elige un usuario de 3 a 64 caracteres y un nombre de hasta 80.');
+        if (name.length < 1 || name.length > 80) return json(response, 400, 'Elige un nombre de hasta 80 caracteres.');
         if (store.accounts().length >= 1000) return json(response, 409, 'Se alcanzó el máximo de cuentas.');
-        const created = store.createAccount({ username, name, credential: await hashPassword(data.password), monthlyQuota: data.monthlyQuota, months: data.months });
+        const created = store.createAccount({ email, name, credential: await hashPassword(data.password), monthlyQuota: data.monthlyQuota, months: data.months });
         return dataResponse(response, { message: 'Cuenta creada.', account: created });
       }
       if (request.url === '/api/admin/account' && request.method === 'POST') {
@@ -209,6 +219,10 @@ const server = createServer(async (request, response) => {
         if (data.action === 'suspend' || data.action === 'activate') {
           store.updateAccount(target, { enabled: data.action === 'activate', credentialVersion: target.credentialVersion + 1 });
           return json(response, 200, data.action === 'activate' ? 'Cuenta habilitada.' : 'Cuenta suspendida. Sus sesiones se cerraron.');
+        }
+        if (data.action === 'email') {
+          store.setEmail(target, data.email);
+          return json(response, 200, 'Correo de acceso actualizado. Las sesiones anteriores se cerraron.');
         }
         if (data.action === 'password') {
           validPassword(data.password);

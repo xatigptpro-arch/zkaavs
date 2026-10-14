@@ -320,3 +320,6 @@ h3 { margin: 0 0 10px; font-size: 1.1rem; }
   .brand { letter-spacing: .03em; font-size: .95rem; }
   .plan-metrics { gap: 18px; }
 }
+
+#email-form { max-width: 480px; }
+.settings-subheading { margin-top: 28px; }

@@ -72,7 +72,7 @@
       <div class="admin-grid">
         <div><h3>Crear cuenta</h3><form id="create-account-form">
           <label for="new-account-name">Nombre</label><input id="new-account-name" type="text" maxlength="80" required>
-          <label for="new-account-username">Usuario</label><input id="new-account-username" type="text" minlength="3" maxlength="64" pattern="[a-z0-9][a-z0-9._\-]{2,63}" autocomplete="off" required>
+          <label for="new-account-email">Correo electrónico</label><input id="new-account-email" type="email" maxlength="254" autocomplete="off" placeholder="correo@ejemplo.com" required>
           <label for="new-account-password">Contraseña inicial</label><input id="new-account-password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required>
           <div class="form-columns"><div><label for="new-account-quota">Invitaciones / mes</label><input id="new-account-quota" type="number" min="1" max="10000" value="10" required></div><div><label for="new-account-months">Meses de plan</label><input id="new-account-months" type="number" min="1" max="36" value="1" required></div></div>
           <button type="submit">Crear cuenta</button>
@@ -82,6 +82,7 @@
           <div class="form-columns"><div><label for="renew-account-quota">Invitaciones / mes</label><input id="renew-account-quota" type="number" min="1" max="10000" value="10" required></div><div><label for="renew-account-months">Meses adicionales</label><input id="renew-account-months" type="number" min="1" max="36" value="1" required></div></div>
           <p class="hint">Renovar un plan activo conserva su saldo y extiende el vencimiento. Un plan vencido inicia un nuevo período. Renovar no reactiva una cuenta suspendida.</p>
           <div class="button-row"><button type="submit">Renovar plan</button><button id="toggle-account" class="danger-button" type="button">Suspender cuenta</button></div>
+          <label for="edit-account-email">Correo de acceso</label><input id="edit-account-email" type="email" maxlength="254" autocomplete="off"><button id="save-account-email" class="secondary-button" type="button">Actualizar correo</button>
           <label for="reset-account-password">Nueva contraseña</label><input id="reset-account-password" type="password" minlength="12" maxlength="128" autocomplete="new-password">
           <button id="reset-account" class="secondary-button" type="button">Restablecer contraseña</button>
         </form></div>
@@ -89,7 +90,14 @@
       <p id="admin-feedback" role="status" aria-live="polite"></p>
     </section>
     <section class="card" id="password-section" aria-labelledby="password-title">
-      <div class="card-heading"><div><p class="eyebrow">Mi cuenta</p><h2 id="password-title">Cambiar contraseña</h2></div></div>
+      <div class="card-heading"><div><p class="eyebrow">Mi cuenta</p><h2 id="password-title">Datos de acceso</h2></div></div>
+      <form id="email-form">
+        <label for="my-email">Correo de acceso</label><input id="my-email" type="email" maxlength="254" autocomplete="email" required>
+        <label for="email-current-password">Contraseña actual</label><input id="email-current-password" type="password" autocomplete="current-password" maxlength="256" required>
+        <button type="submit">Guardar correo</button>
+        <p id="email-feedback" role="status" aria-live="polite"></p>
+      </form>
+      <h3 class="settings-subheading">Contraseña</h3>
       <form id="password-form">
         <label for="current-password">Contraseña actual</label><input id="current-password" type="password" autocomplete="current-password" maxlength="256" required>
         <label for="new-password">Nueva contraseña</label><input id="new-password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>

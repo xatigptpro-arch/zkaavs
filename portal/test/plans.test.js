@@ -28,8 +28,8 @@ test('monthly anniversary, revocation keeps consumption, renewals do not reset a
   let now = Date.parse('2026-01-31T10:00:00.000Z');
   try {
     const store = createStore(join(dir, 'state.json'), credential, () => now);
-    const user = store.account(store.createAccount({ username: 'alice', name: 'Alice', credential, monthlyQuota: 1, months: 1 }).id);
-    const other = store.account(store.createAccount({ username: 'bob', name: 'Bob', credential, monthlyQuota: 1, months: 1 }).id);
+    const user = store.account(store.createAccount({ email: 'alice@example.test', name: 'Alice', credential, monthlyQuota: 1, months: 1 }).id);
+    const other = store.account(store.createAccount({ email: 'bob@example.test', name: 'Bob', credential, monthlyQuota: 1, months: 1 }).id);
     const requestId = randomUUID();
     const { operation } = store.reserve(user, 'client@example.test', 9, requestId);
     assert.equal(store.usage(user).reserved, 1);
@@ -66,7 +66,7 @@ test('interrupted requests reserve quota across restart; explicit failed result 
   try {
     const path = join(dir, 'state.json');
     let store = createStore(path, credential);
-    const id = store.createAccount({ username: 'alice', name: 'Alice', credential, monthlyQuota: 1, months: 1 }).id;
+    const id = store.createAccount({ email: 'alice@example.test', name: 'Alice', credential, monthlyQuota: 1, months: 1 }).id;
     store.reserve(store.account(id), 'uncertain@example.test', 3, randomUUID());
     store = createStore(path, credential);
     assert.equal(store.operations()[0].status, 'uncertain');
@@ -81,4 +81,30 @@ test('month arithmetic handles leap years and preserves time', () => {
   assert.equal(addMonths('2024-01-31T17:45:00.000Z', 1), '2024-02-29T17:45:00.000Z');
   assert.equal(addMonths('2026-01-31T17:45:00.000Z', 1), '2026-02-28T17:45:00.000Z');
   assert.equal(addMonths('2026-12-31T17:45:00.000Z', 2), '2027-02-28T17:45:00.000Z');
+});
+
+
+test('email addresses are normalized and unique; updating login preserves account and quota', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'portal-email-'));
+  try {
+    const store = createStore(join(dir, 'state.json'), credential);
+    const alice = store.createAccount({ email: ' Alice@Example.Test ', name: 'Alice', credential, monthlyQuota: 1, months: 1 });
+    assert.equal(alice.email, 'alice@example.test');
+    assert.throws(() => store.createAccount({ email: 'ALICE@example.test', name: 'Duplicate', credential, monthlyQuota: 1, months: 1 }), /ya está asociado/);
+    assert.throws(() => store.createAccount({ email: 'not-an-email', name: 'Invalid', credential, monthlyQuota: 1, months: 1 }), /válido/);
+    const account = store.account(alice.id);
+    const { operation } = store.reserve(account, 'client@example.test', 5, randomUUID());
+    store.finish(operation, 'confirmed');
+    store.setEmail(account, 'New@Example.Test');
+    assert.equal(account.id, alice.id);
+    assert.equal(account.email, 'new@example.test');
+    assert.equal(account.credentialVersion, 2);
+    assert.equal(store.usage(account).sent, 1);
+    assert.equal(store.dashboard(account).invitations.length, 1);
+    const admin = store.accounts()[0];
+    assert.throws(() => store.setEmail(admin, 'new@example.test'), /ya está asociado/);
+    store.setEmail(admin, 'admin@example.test');
+    assert.equal(store.publicAccount(admin).email, 'admin@example.test');
+    assert.equal(store.publicAccount(admin).username, undefined);
+  } finally { rmSync(dir, { recursive: true }); }
 });

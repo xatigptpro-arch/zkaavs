@@ -19,8 +19,8 @@
       <h2 id="form-title">Inicia sesión</h2>
       <p class="card-subtitle">Ingresa tus credenciales para continuar al panel.</p>
       <form class="login-form" method="post" action="/login">
-        <label for="username">Usuario</label>
-        <input id="username" name="username" type="text" autocomplete="username" maxlength="64" required autofocus>
+        <label for="email">Correo electrónico</label>
+        <input id="email" name="email" type="text" inputmode="email" autocomplete="username" maxlength="254" placeholder="correo@ejemplo.com" required autofocus>
         <label for="password">Contraseña</label>
         <input id="password" name="password" type="password" autocomplete="current-password" required>
         <p id="login-feedback" class="error" role="alert">__LOGIN_ERROR__</p>

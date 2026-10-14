@@ -33,7 +33,7 @@ test('HTTP tenant isolation, quota, renewal, session revocation, concurrent requ
   const secret = join(dir, 'secret.json'); const state = join(dir, 'state.json');
   writeFileSync(secret, JSON.stringify(credential));
   const fixture = createStore(state, credential, () => Date.parse('2025-01-01T00:00:00Z'));
-  fixture.createAccount({ username: 'expired', name: 'Expired', credential, monthlyQuota: 1, months: 1 });
+  fixture.createAccount({ email: 'expired@example.test', name: 'Expired', credential, monthlyQuota: 1, months: 1 });
   const child = spawn(process.execPath, ['server.js'], {
     cwd: new URL('..', import.meta.url),
     env: { ...process.env, PORT: '0', PORTAL_HOSTNAME: 'portal.test', PORTAL_PASSWORD_FILE: secret,
@@ -65,12 +65,12 @@ test('HTTP tenant isolation, quota, renewal, session revocation, concurrent requ
       });
     }
     async function login(username, pass = password) {
-      const result = await request('/login', { method: 'POST', raw: new URLSearchParams({ username, password: pass }).toString() });
+      const result = await request('/login', { method: 'POST', raw: new URLSearchParams({ email: username === 'admin' || username.includes('@') ? username : `${username}@example.test`, password: pass }).toString() });
       assert.equal(result.status, 303); return result.cookie;
     }
     async function dashboard(token) { const r = await request('/api/dashboard', { token }); assert.equal(r.status, 200); return r.body; }
     async function create(username, quota) {
-      const r = await request('/api/admin/accounts', { token: admin, method: 'POST', body: { username, name: username, password, months: 1, monthlyQuota: quota } });
+      const r = await request('/api/admin/accounts', { token: admin, method: 'POST', body: { email: `${username}@example.test`, name: username, password, months: 1, monthlyQuota: quota } });
       assert.equal(r.status, 200); return r.body.account.id;
     }
     function invite(token, email, requestId = randomUUID(), extras = {}) {
@@ -121,7 +121,7 @@ test('HTTP tenant isolation, quota, renewal, session revocation, concurrent requ
     assert.equal((await dashboard(beta)).me.usage.reserved, 0);
     assert.equal((await request('/api/admin/account', { token: admin, method: 'POST', body: { id: alphaId, action: 'suspend' } })).status, 200);
     assert.equal((await request('/api/dashboard', { token: alpha })).status, 401);
-    assert.equal((await request('/login', { method: 'POST', raw: new URLSearchParams({ username: 'alpha', password }).toString() })).status, 401);
+    assert.equal((await request('/login', { method: 'POST', raw: new URLSearchParams({ email: 'alpha@example.test', password }).toString() })).status, 401);
     await request('/api/admin/account', { token: admin, method: 'POST', body: { id: alphaId, action: 'activate' } });
     const alpha2 = await login('alpha');
     await request('/api/admin/account', { token: admin, method: 'POST', body: { id: alphaId, action: 'password', password: `${password}-reset` } });
@@ -131,6 +131,20 @@ test('HTTP tenant isolation, quota, renewal, session revocation, concurrent requ
     assert.equal((await request('/api/password', { token: admin2, method: 'POST', body: { currentPassword: password, password: `${password}-changed` } })).status, 200);
     assert.equal((await request('/api/dashboard', { token: admin })).status, 401);
     assert.equal((await dashboard(admin2)).me.role, 'admin');
+    assert.equal((await request('/api/admin/accounts', { token: admin2, method: 'POST', body: { email: 'ALPHA@EXAMPLE.TEST', name: 'Duplicate', password, monthlyQuota: 2, months: 1 } })).status, 409);
+    assert.equal((await request('/api/admin/accounts', { token: admin2, method: 'POST', body: { email: 'invalid', name: 'Invalid', password, monthlyQuota: 2, months: 1 } })).status, 400);
+    const alphaCurrent = await login('ALPHA@EXAMPLE.TEST', `${password}-reset`);
+    assert.equal((await dashboard(alphaCurrent)).me.email, 'alpha@example.test');
+    assert.equal((await request('/api/email', { token: alphaCurrent, method: 'POST', body: { email: 'beta@example.test', currentPassword: `${password}-reset` } })).status, 409);
+    assert.equal((await request('/api/admin/account', { token: admin2, method: 'POST', body: { id: alphaId, action: 'email', email: 'renamed@example.test' } })).status, 200);
+    assert.equal((await request('/api/dashboard', { token: alphaCurrent })).status, 401);
+    const renamed = await login('renamed@example.test', `${password}-reset`);
+    assert.equal((await dashboard(renamed)).me.usage.sent, 1);
+    assert.equal((await request('/api/email', { token: admin2, method: 'POST', body: { email: 'ADMIN@EXAMPLE.TEST', currentPassword: `${password}-changed` } })).status, 200);
+    assert.equal((await dashboard(admin2)).me.email, 'admin@example.test');
+    assert.equal((await request('/login', { method: 'POST', raw: new URLSearchParams({ email: 'admin', password: `${password}-changed` }).toString() })).status, 401);
+    await login('admin@example.test', `${password}-changed`);
+
   } finally {
     child.kill('SIGTERM');
     await new Promise(resolve => { if (child.exitCode !== null) resolve(); else child.once('exit', resolve); });

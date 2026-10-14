@@ -203,7 +203,9 @@ function renderAccount(data) {
   const { me } = data;
   const admin = me.role === 'admin';
   const usage = me.usage;
-  document.querySelector('#account-label').textContent = me.username;
+  const emailInput = document.querySelector('#my-email');
+  if (!emailInput.dataset.initialized) { emailInput.value = me.email || ''; emailInput.dataset.initialized = '1'; }
+  document.querySelector('#account-label').textContent = me.email || me.username;
   document.querySelector('#plan-title').textContent = me.name;
   document.querySelector('#plan-status').textContent = planNames[usage.status] ?? 'Sin plan';
   document.querySelector('#plan-details').hidden = admin;
@@ -260,7 +262,7 @@ function renderAccounts(accounts) {
   const body = document.querySelector('#accounts-body'); body.replaceChildren();
   for (const account of accounts) {
     const row = document.createElement('tr');
-    cell(row, `${account.name} · ${account.username}`);
+    cell(row, `${account.name} · ${account.email || account.username}`);
     cell(row, planNames[account.usage.status]);
     cell(row, `${account.usage.sent} / ${account.usage.limit}${account.usage.reserved ? ` (+${account.usage.reserved} por comprobar)` : ''}`);
     cell(row, dateText(account.usage.expiresAt)); body.append(row);
@@ -268,14 +270,17 @@ function renderAccounts(accounts) {
   document.querySelector('#accounts-empty').hidden = accounts.length > 0;
   const selected = accountChoice.value;
   accountChoice.replaceChildren(new Option('Selecciona una cuenta', ''));
-  for (const account of accounts) accountChoice.add(new Option(`${account.name} · ${account.username}`, account.id));
+  for (const account of accounts) accountChoice.add(new Option(`${account.name} · ${account.email || account.username}`, account.id));
   accountChoice.value = selected;
   updateAccountActions(false);
 }
 function updateAccountActions(fillQuota = true) {
   const account = dashboard?.accounts?.find(a => a.id === accountChoice.value);
   document.querySelector('#toggle-account').textContent = account?.enabled === false ? 'Habilitar cuenta' : 'Suspender cuenta';
-  if (fillQuota && account) document.querySelector('#renew-account-quota').value = account.usage.limit;
+  if (fillQuota && account) {
+    document.querySelector('#renew-account-quota').value = account.usage.limit;
+    document.querySelector('#edit-account-email').value = account.email || '';
+  }
 }
 accountChoice.addEventListener('change', () => updateAccountActions());
 function post(path, data) { return api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); }
@@ -294,7 +299,7 @@ document.querySelector('#create-account-form').addEventListener('submit', async 
   try {
     const result = await post('/api/admin/accounts', {
       name: document.querySelector('#new-account-name').value.trim(),
-      username: document.querySelector('#new-account-username').value.trim(),
+      email: document.querySelector('#new-account-email').value.trim(),
       password: document.querySelector('#new-account-password').value,
       monthlyQuota: Number(document.querySelector('#new-account-quota').value),
       months: Number(document.querySelector('#new-account-months').value)
@@ -314,7 +319,7 @@ document.querySelector('#manage-account-form').addEventListener('submit', async 
 document.querySelector('#toggle-account').addEventListener('click', async event => {
   const account = dashboard?.accounts?.find(a => a.id === accountChoice.value);
   if (!account) { adminFeedback.textContent = 'Selecciona una cuenta.'; return; }
-  if (!confirm(`¿${account.enabled ? 'Suspender' : 'Habilitar'} la cuenta ${account.username}?`)) return;
+  if (!confirm(`¿${account.enabled ? 'Suspender' : 'Habilitar'} la cuenta ${account.email || account.username}?`)) return;
   await adminAction(event.currentTarget, { action: account.enabled ? 'suspend' : 'activate' });
 });
 document.querySelector('#reset-account').addEventListener('click', async event => {
@@ -335,6 +340,23 @@ document.querySelector('#password-form').addEventListener('submit', async event 
   finally { button.disabled = false; }
 });
 
+document.querySelector('#email-form').addEventListener('submit', async event => {
+  event.preventDefault(); const emailForm = event.currentTarget;
+  const button = emailForm.querySelector('button'); button.disabled = true;
+  const feedback = document.querySelector('#email-feedback');
+  try {
+    const result = await post('/api/email', { email: document.querySelector('#my-email').value.trim(),
+      currentPassword: document.querySelector('#email-current-password').value });
+    feedback.textContent = result.message; document.querySelector('#email-current-password').value = '';
+    await loadDashboard();
+  } catch (error) { feedback.textContent = error.message; }
+  finally { button.disabled = false; }
+});
+document.querySelector('#save-account-email').addEventListener('click', async event => {
+  const input = document.querySelector('#edit-account-email');
+  if (!input.value || !input.reportValidity()) { adminFeedback.textContent = 'Introduce un correo electrónico válido.'; return; }
+  await adminAction(event.currentTarget, { action: 'email', email: input.value.trim() });
+});
 updateCustomDuration();
 loadDashboard();
 setInterval(loadDashboard, 30_000);
