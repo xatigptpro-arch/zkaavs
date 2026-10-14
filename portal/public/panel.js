@@ -217,7 +217,8 @@ function renderAccount(data) {
   if (!admin) {
     document.querySelector('#quota-used').textContent = `${usage.sent} / ${usage.limit}`;
     document.querySelector('#quota-remaining').textContent = usage.remaining;
-    document.querySelector('#quota-reset').textContent = usage.allowed ? dateText(usage.end) : 'Tras renovar';
+    document.querySelector('#quota-reset').textContent = usage.allowed && Date.parse(usage.end) < Date.parse(usage.expiresAt)
+      ? dateText(usage.end) : 'Al renovar';
     document.querySelector('#plan-expiry').textContent = dateText(usage.expiresAt);
     document.querySelector('#quota-progress').max = usage.limit || 1;
     document.querySelector('#quota-progress').value = usage.sent + usage.reserved;
