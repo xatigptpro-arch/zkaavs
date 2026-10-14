@@ -105,6 +105,10 @@ en Name.com por los asignados por Cloudflare. Crear un tunel dedicado usando
 `deploy/cloudflared.example.yml` como plantilla. No modificar el tunel existente
 de otros proyectos. No abrir el puerto 3000 en el router.
 
-Cuando la API publica responda correctamente, actualizar `frontend/config.js`
-a `https://api.zkaavs.app` y desplegar. Para permitir otra app en CORS, agregar
+La API publica esta disponible en `https://api.zkaavs.app` y el frontend usa
+esa URL en `frontend/config.js`. El registro CNAME `api` apunta a
+`4e0ee0cd-5e9b-48c2-be36-bcd999147326.cfargotunnel.com` con proxy activado.
+Los registros de GitHub Pages permanecen en DNS only.
+
+Para permitir otra app en CORS, agregar
 su origen exacto a `FRONTEND_ORIGINS` en el servicio y reiniciar la API.

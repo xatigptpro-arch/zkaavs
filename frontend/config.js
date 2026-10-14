@@ -1,3 +1,3 @@
 window.APP_CONFIG = {
-  apiBaseUrl: "http://localhost:3000"
+  apiBaseUrl: "https://api.zkaavs.app"
 };
