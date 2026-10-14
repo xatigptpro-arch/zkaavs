@@ -4,26 +4,15 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ZKAAVS</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'">
+    <meta name="referrer" content="no-referrer">
     <link rel="stylesheet" href="./styles.css">
-    <script src="./config.js"></script>
-    <script src="./app.js" defer></script>
   </head>
   <body>
     <main class="shell">
       <section class="status-panel" aria-labelledby="title">
-        <p class="eyebrow">Infra base</p>
         <h1 id="title">ZKAAVS</h1>
-        <p class="summary">Frontend en GitHub Pages, backend en tu miniPC.</p>
-
-        <div class="api-card">
-          <div>
-            <span class="label">Backend</span>
-            <strong id="api-url">Cargando...</strong>
-          </div>
-          <span id="api-state" class="badge badge-pending">Verificando</span>
-        </div>
-
-        <pre id="api-output" class="output">Esperando respuesta de la API...</pre>
+        <p class="summary">Tu espacio de aplicaciones.</p>
       </section>
     </main>
   </body>

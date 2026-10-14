@@ -1,0 +1,17 @@
+[Unit]
+Description=Isolated ZKAAVS API and tunnel
+Requires=docker.service
+After=docker.service network-online.target
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/home/labkar/zkaavs/deploy
+ExecStartPre=/bin/sh /home/labkar/zkaavs/deploy/isolate-network.sh
+ExecStart=/usr/bin/docker compose -f compose.yml up -d --wait
+ExecStop=/usr/bin/docker compose -f compose.yml stop
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target

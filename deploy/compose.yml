@@ -1,0 +1,66 @@
+name: zkaavs
+services:
+  api:
+    build: ../backend
+    image: zkaavs-api:local
+    # systemd starts the stack after installing its firewall rules.
+    restart: on-failure
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 256m
+    cpus: 0.5
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      FRONTEND_ORIGINS: https://zkaavs.app,https://www.zkaavs.app
+    networks:
+      private:
+        ipv4_address: 172.30.240.2
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+    logging:
+      driver: json-file
+      options: {max-size: 5m, max-file: "2"}
+  tunnel:
+    image: cloudflare/cloudflared:2026.10.0@sha256:9b49eed8f62806d5d45ddf59ecefb5710429598ea6d3fcccd2af938f621b2b07
+    user: 65532:65532
+    command: [--no-autoupdate, tunnel, --config, /etc/cloudflared/config.yml, run]
+    restart: on-failure
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 256m
+    cpus: 0.5
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - ./cloudflared.container.yml:/etc/cloudflared/config.yml:ro
+      - /etc/zkaavs/tunnel.json:/etc/cloudflared/tunnel.json:ro
+    networks:
+      private:
+        ipv4_address: 172.30.240.3
+      egress:
+        ipv4_address: 172.30.241.2
+    logging:
+      driver: json-file
+      options: {max-size: 5m, max-file: "2"}
+networks:
+  private:
+    internal: true
+    driver_opts:
+      com.docker.network.bridge.name: br-zkaavs-api
+    ipam:
+      config: [{subnet: 172.30.240.0/29}]
+  egress:
+    driver_opts:
+      com.docker.network.bridge.name: br-zkaavs-out
+    ipam:
+      config: [{subnet: 172.30.241.0/29}]

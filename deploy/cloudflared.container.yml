@@ -1,0 +1,7 @@
+tunnel: 4e0ee0cd-5e9b-48c2-be36-bcd999147326
+credentials-file: /etc/cloudflared/tunnel.json
+edge-ip-version: "4"
+ingress:
+  - hostname: api.zkaavs.app
+    service: http://api:3000
+  - service: http_status:404
