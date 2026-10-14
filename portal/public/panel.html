@@ -1,15 +1,15 @@
 <!doctype html>
 <html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Invitaciones · ZKAAVS</title><link rel="stylesheet" href="/style.css"><script src="/panel.js" defer></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Panel · Canva Pro</title><link rel="stylesheet" href="/style.css"><script src="/panel.js" defer></script></head>
 <body>
   <header class="site-header">
-    <a class="brand" href="https://zkaavs.app"><span class="brand-mark" aria-hidden="true">z</span><span>ZKAAVS</span></a>
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">C</span><span>Canva Pro</span></a>
     <form method="post" action="/logout"><button class="text-button" type="submit">Cerrar sesión</button></form>
   </header>
   <main class="shell dashboard">
-    <p class="eyebrow">Canva Educación</p>
+    <p class="eyebrow">Canva Pro</p>
     <h1>Invitaciones</h1>
-    <p class="lead">Gestiona las personas invitadas desde ZKAAVS.</p>
+    <p class="lead">Gestiona las invitaciones y el acceso al plan.</p>
     <section class="stats" aria-label="Resumen">
       <div class="stat"><span>Invitaciones enviadas</span><strong id="sent-count">—</strong></div>
       <div class="stat"><span>Usuarios activos</span><strong id="user-count">—</strong></div>
@@ -39,10 +39,10 @@
     </section>
     <section class="card list-card" aria-labelledby="users-heading">
       <div class="card-heading"><div><p class="eyebrow">Con acceso</p><h2 id="users-heading">Usuarios</h2></div><button class="secondary-button" id="refresh" type="button">Actualizar estados</button></div>
-      <p class="hint">Solo se muestran usuarios invitados desde ZKAAVS. Los días activos se cuentan desde la primera vez que el panel detectó el acceso en Canva.</p>
+      <p class="hint">Aquí solo aparecen las personas invitadas desde este panel. Los días activos se cuentan desde la primera vez que se detectó su acceso en Canva.</p>
       <p id="sync-status" role="status" aria-live="polite"></p>
       <div class="table-wrap"><table><thead><tr><th>Correo</th><th>Días activos</th><th>Vence</th><th>Acción</th></tr></thead><tbody id="users-body"></tbody></table></div>
-      <p id="users-empty" class="empty" hidden>Aún no hay usuarios activos de ZKAAVS.</p>
+      <p id="users-empty" class="empty" hidden>Aún no hay usuarios activos.</p>
     </section>
     <section class="card list-card" aria-labelledby="history-heading">
       <div class="card-heading"><div><p class="eyebrow">Registro</p><h2 id="history-heading">Invitaciones enviadas</h2></div></div>

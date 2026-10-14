@@ -229,7 +229,7 @@ const server = createServer(async (request, response) => {
       }
       const existing = latestRecords().find(record => record.email === email);
       if (existing && ['active', 'pending'].includes(existing.status)) {
-        return json(response, 409, 'Esta persona ya figura entre las invitaciones de ZKAAVS.');
+        return json(response, 409, 'Esta persona ya figura entre las invitaciones enviadas desde este panel.');
       }
       while (invitationTimes.length && Date.now() - invitationTimes[0] > 60 * 60_000) {
         invitationTimes.shift();
