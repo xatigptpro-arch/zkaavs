@@ -1,0 +1,7 @@
+tunnel: YOUR_ZKAAVS_TUNNEL_ID
+credentials-file: /home/labkar/.cloudflared/YOUR_ZKAAVS_TUNNEL_ID.json
+
+ingress:
+  - hostname: api.zkaavs.app
+    service: http://127.0.0.1:3000
+  - service: http_status:404

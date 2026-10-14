@@ -74,4 +74,37 @@ Pasos generales:
 4. En `Build and deployment`, usa `GitHub Actions`.
 5. Agrega tu dominio en `Custom domain`.
 
-Luego en Name.com configuras los DNS para GitHub Pages y, aparte, `api.tu-dominio.com` para el backend.
+## Infraestructura ZKAAVS
+
+`zkaavs.app` es el lobby en GitHub Pages. Cada futura app puede tener su propio
+subdominio y backend local. Por ahora la API base corre en `127.0.0.1:3000`.
+
+El servicio de usuario se instala con:
+
+```bash
+mkdir -p ~/.config/systemd/user
+cp deploy/zkaavs-backend.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now zkaavs-backend
+```
+
+Comprobacion y logs:
+
+```bash
+curl http://127.0.0.1:3000/health
+systemctl --user status zkaavs-backend
+journalctl --user -u zkaavs-backend -n 50
+```
+
+El usuario debe tener lingering habilitado para arrancar al encender el miniPC.
+En esta maquina ya esta habilitado.
+
+Para publicar `api.zkaavs.app`, agregar el dominio a Cloudflare, conservar los
+cuatro registros A de GitHub Pages y el CNAME de www, y cambiar los nameservers
+en Name.com por los asignados por Cloudflare. Crear un tunel dedicado usando
+`deploy/cloudflared.example.yml` como plantilla. No modificar el tunel existente
+de otros proyectos. No abrir el puerto 3000 en el router.
+
+Cuando la API publica responda correctamente, actualizar `frontend/config.js`
+a `https://api.zkaavs.app` y desplegar. Para permitir otra app en CORS, agregar
+su origen exacto a `FRONTEND_ORIGINS` en el servicio y reiniciar la API.
