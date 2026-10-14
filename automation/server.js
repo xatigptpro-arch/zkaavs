@@ -166,7 +166,7 @@ app.post('/members', async (request, response) => {
   }
 });
 
-async function confirmRemoval(canvaPage, pending) {
+async function confirmRemoval(canvaPage, pending, allowDesignDeletion) {
   for (let step = 0; step < 3; step++) {
     const modal = canvaPage.getByRole('alertdialog').last();
     const dialog = await modal.isVisible().catch(() => false)
@@ -175,8 +175,11 @@ async function confirmRemoval(canvaPage, pending) {
     const text = await dialog.innerText();
     if (/eliminar.*diseñ|delete.*design/i.test(text)) {
       const safe = dialog.getByRole('radio', { name: /solo.*quitar|remove.*only/i });
-      if (await safe.count() !== 1) throw new Error('Canva requires a design deletion choice');
-      await safe.check();
+      if (await safe.count() === 1) {
+        await safe.check();
+      } else if (!allowDesignDeletion) {
+        throw new Error('Canva requires explicit approval to delete designs');
+      }
     }
     const names = pending
       ? [/^Cancelar invitación$/, /^Confirmar$/]
@@ -198,6 +201,7 @@ app.post('/revoke', async (request, response) => {
   if (!emailPattern.test(email) || email.length > 254) {
     return response.status(400).json({ message: 'Correo inválido.' });
   }
+  const allowDesignDeletion = request.body?.allowDesignDeletion === true;
   if (inviting || managing) return response.status(409).json({ message: 'Canva está ocupado.' });
   managing = true;
   try {
@@ -205,13 +209,16 @@ app.post('/revoke', async (request, response) => {
     const row = await personRow(canvaPage, email);
     if (!row) return response.json({ revoked: true, message: 'La persona ya no figura en Canva.' });
     const pending = await row.getByText('Invitación enviada', { exact: true }).count() > 0;
+    if (!pending && !allowDesignDeletion) {
+      return response.status(409).json({ message: 'Canva exige autorización para borrar los diseños de esta persona.' });
+    }
     const role = row.getByRole('button', { name: 'Estudiante', exact: true });
     if (await role.count() !== 1) throw new Error('Canva role changed from Student');
     await role.click();
     const action = pending ? 'Cancelar invitación' : 'Quitar de la escuela';
     await canvaPage.getByRole('menuitem', { name: action, exact: true }).last().click();
     await canvaPage.waitForTimeout(400);
-    await confirmRemoval(canvaPage, pending);
+    await confirmRemoval(canvaPage, pending, allowDesignDeletion);
     await canvaPage.reload({ waitUntil: 'domcontentloaded', timeout: 20_000 });
     await canvaPage.getByRole('heading', { name: /^Personas/ }).waitFor({ timeout: 45_000 });
     await canvaPage.waitForTimeout(1500);

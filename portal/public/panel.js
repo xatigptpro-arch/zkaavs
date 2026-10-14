@@ -162,11 +162,15 @@ async function revoke(event) {
   if (!record) return;
   const verb = record.status === 'pending' ? 'cancelar la invitación' : 'revocar el acceso';
   if (!confirm(`¿Quieres ${verb} de ${record.email}?`)) return;
+  const allowDesignDeletion = record.status === 'active' && confirm(
+    `Canva advierte que al quitar a ${record.email} también eliminará todos sus diseños guardados, incluidos los privados. ¿Confirmas que continúe?`
+  );
+  if (record.status === 'active' && !allowDesignDeletion) return;
   button.disabled = true;
   try {
     const result = await api('/api/revoke', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: record.id })
+      body: JSON.stringify({ id: record.id, allowDesignDeletion })
     });
     syncStatus.textContent = result.message;
     await loadDashboard();

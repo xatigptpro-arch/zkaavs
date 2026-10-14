@@ -66,6 +66,12 @@ function startSync() {
       updateRecord(record, changes);
       if (record.expiresAt && Date.parse(record.expiresAt) <= Date.now()
           && (memberStatus === 'active' || memberStatus === 'pending')) {
+        if (memberStatus === 'active') {
+          updateRecord(record, {
+            revokeError: 'Canva exige borrar los diseños para quitar el acceso. Confirma la retirada manualmente.'
+          });
+          continue;
+        }
         try {
           const revoked = await browserRequest('/revoke', { email: record.email }, 45_000);
           if (revoked.status !== 200 || revoked.result.revoked !== true) {
@@ -263,9 +269,15 @@ const server = createServer(async (request, response) => {
       if (!record || !['active', 'pending'].includes(record.status)) {
         return json(response, 404, 'Esta invitación no está activa.');
       }
+      const allowDesignDeletion = data.allowDesignDeletion === true;
+      if (record.status === 'active' && !allowDesignDeletion) {
+        return json(response, 409, 'Canva puede borrar los diseños de esta persona. Confirma la retirada desde el panel.');
+      }
       if (syncPromise) return json(response, 409, 'Espera a que termine la actualización.');
       try {
-        const revoked = await browserRequest('/revoke', { email: record.email }, 45_000);
+        const revoked = await browserRequest('/revoke', {
+          email: record.email, allowDesignDeletion
+        }, 45_000);
         if (revoked.status !== 200 || revoked.result.revoked !== true) {
           return json(response, 424, revoked.result.message ?? 'Canva no confirmó la revocación.');
         }
