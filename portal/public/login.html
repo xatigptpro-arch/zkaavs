@@ -1,17 +1,30 @@
 <!doctype html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Acceso · ZKAAVS</title><link rel="stylesheet" href="/style.css"></head>
-<body>
-  <header><a class="brand" href="https://zkaavs.app">ZKAAVS</a><span class="tag">Panel privado</span></header>
-  <main class="shell compact">
-    <p class="eyebrow">Equipo educativo</p>
-    <h1>Acceso al panel</h1>
-    <p class="lead">Inicia sesión para gestionar invitaciones de Canva Educación.</p>
-    <form class="card" method="post" action="/login">
-      <label for="password">Contraseña del panel</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
-      <button type="submit">Entrar</button>
-    </form>
+<body class="login-page">
+  <header class="site-header">
+    <a class="brand" href="https://zkaavs.app"><span class="brand-mark" aria-hidden="true">z</span><span>ZKAAVS</span></a>
+    <span class="tag">Panel privado</span>
+  </header>
+  <main class="login-layout">
+    <section class="login-copy" aria-labelledby="login-title">
+      <p class="eyebrow">Canva Educación</p>
+      <h1 id="login-title">Todo tu equipo, en un solo lugar.</h1>
+      <p class="lead">Administra invitaciones y beneficios de forma sencilla desde tu espacio privado.</p>
+      <div class="login-note"><span class="login-note-icon" aria-hidden="true">✓</span><span>Acceso reservado para la administración de ZKAAVS</span></div>
+    </section>
+    <section class="card login-card" aria-labelledby="form-title">
+      <div class="login-icon" aria-hidden="true">↗</div>
+      <p class="eyebrow">Bienvenido</p>
+      <h2 id="form-title">Inicia sesión</h2>
+      <p class="card-subtitle">Ingresa tu contraseña para continuar al panel.</p>
+      <form class="login-form" method="post" action="/login">
+        <label for="password">Contraseña del panel</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+        <button type="submit"><span>Entrar al panel</span><span aria-hidden="true">→</span></button>
+      </form>
+      <p class="login-caption">Tu sesión está protegida y solo tú puedes acceder a este panel.</p>
+    </section>
   </main>
 </body>
 </html>
