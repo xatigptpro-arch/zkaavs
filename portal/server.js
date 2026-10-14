@@ -218,8 +218,8 @@ const server = createServer(async (request, response) => {
       if (email.length > 254 || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email)) {
         return json(response, 400, 'Comprueba el correo electrónico.');
       }
-      if (!Number.isInteger(durationDays) || durationDays < 1 || durationDays > 365) {
-        return json(response, 400, 'Elige una duración de 1 a 365 días.');
+      if (!Number.isInteger(durationDays) || durationDays < 1 || durationDays > 3650) {
+        return json(response, 400, 'Elige una duración de 1 a 3650 días.');
       }
       const existing = latestRecords().find(record => record.email === email);
       if (existing && ['active', 'pending'].includes(existing.status)) {

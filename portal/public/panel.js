@@ -1,11 +1,22 @@
 const form = document.querySelector('#invite-form');
 const submit = document.querySelector('#submit');
 const feedback = document.querySelector('#feedback');
+const duration = document.querySelector('#duration');
+const customDurationWrap = document.querySelector('#custom-duration-wrap');
+const customDuration = document.querySelector('#custom-duration');
 const syncStatus = document.querySelector('#sync-status');
 const refresh = document.querySelector('#refresh');
 const usersBody = document.querySelector('#users-body');
 const invitationsBody = document.querySelector('#invitations-body');
 let dashboard;
+
+function updateCustomDuration() {
+  const custom = duration.value === 'custom';
+  customDurationWrap.hidden = !custom;
+  customDuration.required = custom;
+}
+
+duration.addEventListener('change', updateCustomDuration);
 
 function dateText(value) {
   return value ? new Date(value).toLocaleDateString('es', { dateStyle: 'medium' }) : 'Anterior al registro';
@@ -110,12 +121,14 @@ form.addEventListener('submit', async event => {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: document.querySelector('#email').value.trim(),
-        durationDays: Number(document.querySelector('#duration').value)
+        durationDays: duration.value === 'custom'
+          ? Number(customDuration.value) : Number(duration.value)
       })
     });
     feedback.textContent = result.message;
     feedback.className = 'success';
     form.reset();
+    updateCustomDuration();
     await loadDashboard();
   } catch (error) {
     feedback.textContent = error.message || 'No se pudo conectar. Revisa en Canva antes de volver a intentar.';
