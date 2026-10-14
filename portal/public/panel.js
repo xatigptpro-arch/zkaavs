@@ -10,6 +10,7 @@ const usersBody = document.querySelector('#users-body');
 const invitationsBody = document.querySelector('#invitations-body');
 let dashboard;
 let inviteBusy = false;
+let currentView = ['invites', 'admin', 'account'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'invites';
 
 function updateCustomDuration() {
   const custom = duration.value === 'custom';
@@ -210,9 +211,9 @@ function renderAccount(data) {
   document.querySelector('#plan-status').textContent = planNames[usage.status] ?? 'Sin plan';
   document.querySelector('#plan-details').hidden = admin;
   document.querySelector('#plan-message').textContent = admin
-    ? 'Gestiona todas las cuentas, sus planes y las invitaciones desde administración.'
-    : usage.allowed ? 'Cada invitación confirmada consume un cupo. Cancelar o revocar no devuelve saldo.'
-      : 'Tu plan venció. Puedes consultar tu historial; solicita una renovación para volver a gestionar invitaciones.';
+    ? 'Acceso a todas las cuentas e invitaciones.'
+    : usage.allowed ? 'Cancelar o revocar no devuelve cupo.'
+      : 'Plan vencido. El historial sigue disponible; renueva para gestionar invitaciones.';
   if (!admin) {
     document.querySelector('#quota-used').textContent = `${usage.sent} / ${usage.limit}`;
     document.querySelector('#quota-remaining').textContent = usage.remaining;
@@ -227,7 +228,7 @@ function renderAccount(data) {
   for (const element of form.elements) element.disabled = !usage.allowed;
   submit.disabled = inviteBusy || !usage.allowed || usage.remaining === 0;
   updateCustomDuration();
-  document.querySelector('#admin-section').hidden = !admin;
+  showView(currentView, false);
   document.querySelector('#admin-link').hidden = !admin;
   for (const element of document.querySelectorAll('.admin-only')) element.hidden = !admin;
   if (admin) renderAccounts(data.accounts);
@@ -356,6 +357,42 @@ document.querySelector('#save-account-email').addEventListener('click', async ev
   const input = document.querySelector('#edit-account-email');
   if (!input.value || !input.reportValidity()) { adminFeedback.textContent = 'Introduce un correo electrónico válido.'; return; }
   await adminAction(event.currentTarget, { action: 'email', email: input.value.trim() });
+});
+function showView(view, updateUrl = true) {
+  const admin = dashboard?.me.role === 'admin';
+  currentView = view === 'admin' && !admin ? 'invites' : view;
+  const titles = {
+    invites: ['Invitaciones', 'Envíos, usuarios y plazos.'],
+    admin: ['Cuentas y planes', 'Accesos, cupos mensuales y renovaciones.'],
+    account: ['Mi cuenta', 'Correo electrónico y contraseña de acceso.']
+  };
+  document.querySelector('#invites-view').hidden = currentView !== 'invites';
+  document.querySelector('#admin-section').hidden = currentView !== 'admin' || !admin;
+  document.querySelector('#password-section').hidden = currentView !== 'account';
+  for (const button of document.querySelectorAll('[data-view]')) {
+    const selected = button.dataset.view === currentView;
+    button.setAttribute('aria-selected', String(selected));
+    button.tabIndex = selected ? 0 : -1;
+  }
+  document.querySelector('#view-title').textContent = titles[currentView][0];
+  document.querySelector('#view-description').textContent = titles[currentView][1];
+  if (updateUrl) history.replaceState(null, '', `#${currentView}`);
+}
+for (const button of document.querySelectorAll('[data-view]')) {
+  button.addEventListener('click', () => showView(button.dataset.view));
+  button.addEventListener('keydown', event => {
+    const tabs = [...document.querySelectorAll('[data-view]')].filter(tab => !tab.hidden);
+    const index = tabs.indexOf(event.currentTarget);
+    const next = event.key === 'ArrowRight' ? (index + 1) % tabs.length
+      : event.key === 'ArrowLeft' ? (index - 1 + tabs.length) % tabs.length
+        : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : -1;
+    if (next < 0) return;
+    event.preventDefault(); tabs[next].focus(); showView(tabs[next].dataset.view);
+  });
+}
+window.addEventListener('hashchange', () => {
+  const view = location.hash.slice(1);
+  if (['invites', 'admin', 'account'].includes(view)) showView(view, false);
 });
 updateCustomDuration();
 loadDashboard();

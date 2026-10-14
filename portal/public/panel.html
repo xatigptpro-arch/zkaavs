@@ -1,18 +1,22 @@
 <!doctype html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Panel · Canva Pro</title><link rel="stylesheet" href="/style.css"><script src="/panel.js" defer></script></head>
-<body>
+<body class="panel-page">
   <header class="site-header">
-    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">C</span><span>Canva Pro</span></a>
+    <a class="brand" href="/"><span>Canva Pro</span></a>
     <div class="header-account"><span id="account-label"></span><form method="post" action="/logout"><button class="text-button" type="submit">Cerrar sesión</button></form></div>
   </header>
   <main class="shell dashboard">
-    <p class="eyebrow">Canva Pro</p>
-    <h1>Invitaciones</h1>
-    <p class="lead">Gestiona las invitaciones y el acceso al plan.</p>
-    <nav class="panel-tabs" aria-label="Secciones"><a href="#new-invite-heading">Invitaciones</a><a href="#admin-section" id="admin-link" hidden>Administración</a><a href="#password-section">Mi cuenta</a></nav>
+    <h1 id="view-title">Invitaciones</h1>
+    <p class="lead" id="view-description">Envíos, usuarios y plazos.</p>
+    <nav class="panel-tabs" role="tablist" aria-label="Secciones">
+      <button id="invites-tab" type="button" role="tab" data-view="invites" aria-controls="invites-view" aria-selected="true">Invitaciones</button>
+      <button id="admin-link" type="button" role="tab" data-view="admin" aria-controls="admin-section" aria-selected="false" tabindex="-1" hidden>Cuentas y planes</button>
+      <button id="account-tab" type="button" role="tab" data-view="account" aria-controls="password-section" aria-selected="false" tabindex="-1">Mi cuenta</button>
+    </nav>
+    <div id="invites-view" role="tabpanel" aria-labelledby="invites-tab">
     <section class="card plan-card" aria-labelledby="plan-title">
-      <div class="card-heading"><div><p class="eyebrow">Mi cuenta</p><h2 id="plan-title">Tu plan</h2></div><span class="state" id="plan-status">Cargando…</span></div>
+      <div class="card-heading"><div><h2 id="plan-title">Tu plan</h2></div><span class="state" id="plan-status">Cargando…</span></div>
       <div id="plan-details" hidden>
         <div class="plan-metrics"><div><span>Enviadas este mes</span><strong id="quota-used">—</strong></div><div><span>Invitaciones disponibles</span><strong id="quota-remaining">—</strong></div><div><span>Próximo período</span><strong id="quota-reset">—</strong></div><div><span>Vencimiento del plan</span><strong id="plan-expiry">—</strong></div></div>
         <progress id="quota-progress" value="0" max="1" aria-label="Cupo mensual consumido"></progress>
@@ -21,12 +25,13 @@
       <p id="plan-message" class="hint"></p>
     </section>
     <section class="stats" aria-label="Resumen">
-      <div class="stat"><span>Invitaciones enviadas</span><strong id="sent-count">—</strong></div>
+      <div class="stat"><span>Enviadas</span><strong id="sent-count">—</strong></div>
       <div class="stat"><span>Usuarios activos</span><strong id="user-count">—</strong></div>
-      <div class="stat"><span>Invitaciones pendientes</span><strong id="pending-count">—</strong></div>
+      <div class="stat"><span>Pendientes</span><strong id="pending-count">—</strong></div>
     </section>
+    <div class="invitation-grid">
     <section class="card" aria-labelledby="new-invite-heading">
-      <div class="card-heading"><div><p class="eyebrow">Nueva invitación</p><h2 id="new-invite-heading">Invitar por correo</h2></div></div>
+      <div class="card-heading"><div><h2 id="new-invite-heading">Enviar invitación</h2></div></div>
       <form id="invite-form">
         <label for="email">Correo de la persona</label>
         <input id="email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="nombre@ejemplo.com" required>
@@ -47,25 +52,29 @@
         <p id="feedback" role="status" aria-live="polite"></p>
       </form>
     </section>
+    <div class="client-lists">
     <section class="card list-card" aria-labelledby="users-heading">
-      <div class="card-heading"><div><p class="eyebrow">Con acceso</p><h2 id="users-heading">Usuarios</h2></div><button class="secondary-button" id="refresh" type="button">Actualizar estados</button></div>
+      <div class="card-heading"><div><h2 id="users-heading">Usuarios activos</h2></div><button class="secondary-button" id="refresh" type="button">Actualizar estados</button></div>
       <p class="hint">Aquí solo aparecen las personas invitadas desde este panel. Los días activos se cuentan desde la primera vez que se detectó su acceso en Canva.</p>
       <p id="sync-status" role="status" aria-live="polite"></p>
       <div class="table-wrap"><table><thead><tr><th>Correo</th><th class="admin-only" hidden>Cuenta</th><th>Días activos</th><th>Vence</th><th>Acción</th></tr></thead><tbody id="users-body"></tbody></table></div>
       <p id="users-empty" class="empty" hidden>Aún no hay usuarios activos.</p>
     </section>
     <section class="card list-card" aria-labelledby="history-heading">
-      <div class="card-heading"><div><p class="eyebrow">Registro</p><h2 id="history-heading">Invitaciones enviadas</h2></div></div>
+      <div class="card-heading"><div><h2 id="history-heading">Historial de invitaciones</h2></div></div>
       <div class="table-wrap"><table><thead><tr><th>Correo</th><th class="admin-only" hidden>Cuenta</th><th>Enviada</th><th>Plazo</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="invitations-body"></tbody></table></div>
       <p id="invitations-empty" class="empty" hidden>Aún no hay invitaciones registradas.</p>
     </section>
     <section class="card list-card" id="operations-section" hidden aria-labelledby="operations-title">
-      <div class="card-heading"><div><p class="eyebrow">Seguimiento</p><h2 id="operations-title">Envíos por comprobar</h2></div></div>
+      <div class="card-heading"><div><h2 id="operations-title">Envíos por comprobar</h2></div></div>
       <p class="hint">Estos envíos reservan un cupo hasta que administración compruebe el resultado en Canva.</p>
       <div class="table-wrap"><table><thead><tr><th>Correo</th><th>Fecha</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="operations-body"></tbody></table></div>
     </section>
-    <section class="card" id="admin-section" hidden aria-labelledby="admin-title">
-      <div class="card-heading"><div><p class="eyebrow">Administración</p><h2 id="admin-title">Cuentas y planes</h2></div></div>
+    </div>
+    </div>
+    </div>
+    <section class="card" id="admin-section" role="tabpanel" hidden aria-labelledby="admin-link">
+      <div class="card-heading"><div><h2 id="admin-title">Cuentas y planes</h2></div></div>
       <p class="hint">Cada cuenta ve solo sus clientes. El cupo se reinicia en el aniversario mensual de su plan; cancelar o revocar no devuelve saldo. Las renovaciones se gestionan aquí.</p>
       <div class="table-wrap"><table><thead><tr><th>Cuenta</th><th>Plan</th><th>Enviadas / cupo</th><th>Vence</th></tr></thead><tbody id="accounts-body"></tbody></table></div>
       <p id="accounts-empty" class="empty" hidden>Aún no hay cuentas creadas.</p>
@@ -89,21 +98,22 @@
       </div>
       <p id="admin-feedback" role="status" aria-live="polite"></p>
     </section>
-    <section class="card" id="password-section" aria-labelledby="password-title">
-      <div class="card-heading"><div><p class="eyebrow">Mi cuenta</p><h2 id="password-title">Datos de acceso</h2></div></div>
+    <section class="card" id="password-section" role="tabpanel" hidden aria-labelledby="account-tab">
+      <div class="card-heading"><div><h2 id="password-title">Datos de acceso</h2></div></div>
+      <div class="settings-grid"><div><h3>Correo electrónico</h3>
       <form id="email-form">
         <label for="my-email">Correo de acceso</label><input id="my-email" type="email" maxlength="254" autocomplete="email" required>
         <label for="email-current-password">Contraseña actual</label><input id="email-current-password" type="password" autocomplete="current-password" maxlength="256" required>
         <button type="submit">Guardar correo</button>
         <p id="email-feedback" role="status" aria-live="polite"></p>
       </form>
-      <h3 class="settings-subheading">Contraseña</h3>
+      </div><div><h3>Contraseña</h3>
       <form id="password-form">
         <label for="current-password">Contraseña actual</label><input id="current-password" type="password" autocomplete="current-password" maxlength="256" required>
         <label for="new-password">Nueva contraseña</label><input id="new-password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
         <button type="submit">Guardar contraseña</button>
         <p id="password-feedback" role="status" aria-live="polite"></p>
-      </form>
+      </form></div></div>
     </section>
   </main>
 </body>
