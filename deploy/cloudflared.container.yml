@@ -4,4 +4,6 @@ edge-ip-version: "4"
 ingress:
   - hostname: api.zkaavs.app
     service: http://api:3000
+  - hostname: canva.zkaavs.app
+    service: http://portal:3600
   - service: http_status:404

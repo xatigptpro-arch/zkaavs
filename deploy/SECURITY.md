@@ -4,7 +4,7 @@ Comprobaciones ejecutadas sobre la configuración activa:
 
 - API y túnel en redes exclusivas; sin puertos publicados ni redes compartidas
   con otros proyectos. El antiguo puerto 3000 del host ya no está escuchando.
-- API con UID 10001, sin montajes, socket Docker o credenciales del host.
+- API con UID 10001, sin montajes ni socket Docker.
 - Túnel con UID 65532; únicamente su configuración y credencial en solo lectura.
 - Disco de la API no escribible: pruebas en `/app` y `/tmp` rechazadas.
 - Conexiones desde las redes de API y túnel hacia gateways del host, un servicio
@@ -22,6 +22,14 @@ Comprobaciones ejecutadas sobre la configuración activa:
   reinicio automático. Reglas aplicadas antes del inicio del conjunto.
 - Reinicio del conjunto ZKAAVS verificado sin reiniciar otros contenedores.
   HTTP público redirige a HTTPS con respuesta 308.
+- Navegador de Canva en su propio contenedor y red de salida; VNC publicado
+  únicamente en la IP de Tailscale. Se comprobó que no puede iniciar conexiones
+  hacia la API, mientras la API sí alcanza el controlador del navegador.
+- El portal local rechazó un envío sin sesión (HTTP 401) y permitió iniciar
+  sesión con la contraseña correcta. Una invitación de prueba autorizada mostró
+  confirmación en Canva.
+- El prototipo alojado en Sites quedó sin secreto ni dominio propio; el portal
+  operativo está en el miniPC y se publica por el túnel exclusivo de ZKAAVS.
 
 ## Alcance y límites
 
@@ -33,11 +41,14 @@ Los contenedores comparten kernel y daemon Docker con el host. Una vulnerabilida
 del kernel/runtime o acceso administrativo puede superar esta separación.
 Una VM o máquina dedicada ofrece una frontera más fuerte.
 
-La API actual es pública y solo expone comprobaciones de estado. CORS no es
-un sistema de autenticación. Las nuevas funciones privadas deben incorporar
-controles de acceso antes de publicarse.
+La API pública conserva solo los endpoints de estado. CORS no es un sistema de
+autenticación. El portal exige contraseña y sesión segura. El navegador automatizado
+mantiene una sesión administrativa de Canva: quien obtenga su perfil o acceso
+al VNC podría operar con esa cuenta. El perfil se guarda fuera del repositorio,
+con permisos restringidos en el miniPC.
 
-Las reglas dependen de los bridges `br-zkaavs-api` y `br-zkaavs-out` y de los
+Las reglas dependen de los bridges `br-zkaavs-api`, `br-zkaavs-out` y
+`br-zkaavs-canva`, además de los
 rangos actuales de conexión de Cloudflare. Los cambios del firewall o de Docker
 requieren verificar nuevamente la separación. DNS del túnel usa el resolver de
 Docker; no se implementó un filtro por nombre de dominio para sus consultas DNS.

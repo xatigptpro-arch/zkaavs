@@ -8,23 +8,40 @@ API en https://api.zkaavs.app, servida por un túnel exclusivo de Cloudflare.
 - `frontend/`: lobby sin consultas a la API ni información de infraestructura.
 - `backend/`: API Express; Node 24 LTS.
 - `deploy/compose.yml`: API y túnel en contenedores separados.
+- `automation/`: navegador aislado para invitaciones de Canva Educación.
+- `portal/`: panel privado de invitaciones, alojado en el miniPC.
 - `deploy/isolate-network.sh`: reglas de red exclusivas de ZKAAVS.
 - `deploy/zkaavs-stack.service`: arranque automático del conjunto.
 
 ## Aislamiento en el miniPC
 
 La API no publica puertos en el host. Su única red es `zkaavs_private`, interna,
-y solo la comparte con el túnel. No monta archivos del host ni credenciales.
+y solo la comparte con el túnel, el portal y el navegador de Canva.
 El túnel tiene una segunda red para salir a los destinos de Cloudflare en el
 puerto 7844 TCP/UDP. Las reglas INPUT y DOCKER-USER bloquean conexiones de estas
 redes hacia el host, la LAN y las demás redes Docker. La API no tiene salida a
 Internet; el túnel solo tiene la salida necesaria para sus conexiones y DNS.
 
-Ambos contenedores usan usuarios sin privilegios, disco de solo lectura,
+Los cuatro contenedores usan usuarios sin privilegios, disco base de solo lectura,
 capabilities eliminadas, no-new-privileges, límites de CPU/memoria/procesos y
 rotación de logs. No usan el socket Docker, la red del host ni redes de otros
 proyectos. Las imágenes base están fijadas por digest; sus actualizaciones
 requieren revisar los nuevos digests y reconstruir.
+
+El navegador de Canva corre en un tercer contenedor con perfil persistente
+exclusivo en `/etc/zkaavs/canva-profile`. Su VNC solo escucha en la IP de
+Tailscale del miniPC, puerto 5902. Su salida de red se limita a HTTPS público;
+no puede iniciar conexiones hacia la API, el túnel, el host, la LAN ni los
+demás proyectos. La API sí puede llamarlo para enviar una invitación. Chrome
+se ejecuta con `--no-sandbox` dentro del contenedor; la separación respecto al
+host depende del aislamiento de Docker y de las reglas de firewall.
+
+El portal corre en un cuarto contenedor sin puertos publicados. La única ruta
+pública es `canva.zkaavs.app` a través del túnel. Exige una contraseña larga
+guardada solo como hash en `/etc/zkaavs/portal-password.json`, limita los
+intentos de acceso y usa una cookie de sesión segura de cuatro horas. También
+exige origen correcto y una confirmación explícita antes de invitar. Puede
+contactar al controlador del navegador, pero no a la API ni a otros proyectos.
 
 El túnel solo recibe su propia credencial de `/etc/zkaavs/tunnel.json`, montada
 en solo lectura. No recibe el certificado administrativo de Cloudflare ni las
@@ -63,15 +80,16 @@ Al detenerlo se conservan las reglas; solo se bloquean las redes de ZKAAVS.
 
 ## API y CORS
 
-Los únicos endpoints actuales son `GET /health` y `GET /api/status`; ambos
-responden `{ "ok": true }`. No hay cuentas, datos privados ni operaciones de
-escritura. Se aplican cabeceras de seguridad, respuestas sin caché y un límite de
-120 solicitudes por minuto por IP/subred IPv6 (en memoria por proceso).
+`GET /health` y `GET /api/status` responden `{ "ok": true }`. La API no tiene
+operaciones de escritura. Se aplican cabeceras de seguridad, respuestas sin
+caché y un límite general de 120 solicitudes por minuto por IP/subred IPv6
+(en memoria por proceso). Las invitaciones se gestionan únicamente desde el
+portal privado, separado de la API.
 
 En producción CORS permite únicamente `https://zkaavs.app` y
 `https://www.zkaavs.app`. CORS controla navegadores; no es autenticación ni impide
-que un cliente externo consulte estos endpoints públicos. Antes de añadir datos
-privados o acciones de escritura se necesita autenticación y autorización.
+que un cliente externo consulte los endpoints públicos. Una sesión de Canva
+válida se mantiene únicamente en el perfil del navegador aislado.
 
 ## Desarrollo local
 
@@ -93,6 +111,11 @@ Cloudflare gestiona DNS con `bryce.ns.cloudflare.com` y
 `www` permanecen en DNS only. El CNAME `api` apunta a
 `4e0ee0cd-5e9b-48c2-be36-bcd999147326.cfargotunnel.com` con proxy activado.
 El dominio sigue registrado en Name.com.
+
+Para `canva.zkaavs.app`, Cloudflare debe tener un CNAME con proxy activado
+hacia `4e0ee0cd-5e9b-48c2-be36-bcd999147326.cfargotunnel.com`. El túnel
+envía ese hostname al contenedor `portal` del miniPC. El prototipo de Sites
+quedó desconectado y no forma parte del despliegue.
 
 `.github/workflows/pages.yml` publica `frontend/` al subir cambios a `main`.
 La política CSP del lobby permite únicamente su CSS local; no carga scripts,

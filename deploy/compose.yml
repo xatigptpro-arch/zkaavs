@@ -52,6 +52,58 @@ services:
     logging:
       driver: json-file
       options: {max-size: 5m, max-file: "2"}
+  canva-browser:
+    build: ../automation
+    image: zkaavs-canva-browser:local
+    user: 10001:10001
+    restart: on-failure
+    read_only: true
+    shm_size: 256m
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    mem_limit: 1536m
+    cpus: 1.5
+    environment:
+      BROWSER_MODE: cdp
+    volumes:
+      - /etc/zkaavs/canva-profile:/profile:rw
+    ports:
+      - "100.115.183.101:5902:5902"
+    networks:
+      private:
+        ipv4_address: 172.30.240.4
+      canva_egress:
+        ipv4_address: 172.30.242.2
+    logging:
+      driver: json-file
+      options: {max-size: 5m, max-file: "2"}
+  portal:
+    build: ../portal
+    image: zkaavs-canva-portal:local
+    user: 10002:10002
+    restart: on-failure
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 128m
+    cpus: 0.5
+    volumes:
+      - /etc/zkaavs/portal-password.json:/run/secrets/portal-password:ro
+    networks:
+      private:
+        ipv4_address: 172.30.240.5
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3600/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+    logging:
+      driver: json-file
+      options: {max-size: 5m, max-file: "2"}
 networks:
   private:
     internal: true
@@ -64,3 +116,8 @@ networks:
       com.docker.network.bridge.name: br-zkaavs-out
     ipam:
       config: [{subnet: 172.30.241.0/29}]
+  canva_egress:
+    driver_opts:
+      com.docker.network.bridge.name: br-zkaavs-canva
+    ipam:
+      config: [{subnet: 172.30.242.0/29}]
